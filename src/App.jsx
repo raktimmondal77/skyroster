@@ -90,6 +90,19 @@ const fmtDate = d => {
   return `${y}-${m}-${day}`;
 };
 
+const genDates = (s, e) => {
+  const out = [];
+  const cur = new Date(s + "T00:00:00");
+  const end = new Date(e + "T00:00:00");
+
+  while (cur <= end) {
+    out.push(fmtDate(cur));
+    cur.setDate(cur.getDate() + 1);
+  }
+
+  return out;
+};
+
 const dayFull = ds =>
   DAYS_FULL[new Date(ds + "T00:00:00").getDay()];
 
