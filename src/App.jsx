@@ -83,17 +83,20 @@ const NAV_ITEMS  = [
   { id:"settings",  label:"Settings",     emoji:"⚙" },
 ];
 
-const fmtDate   = d => d.toISOString().split("T")[0];
-const dayFull   = ds => DAYS_FULL[new Date(ds+"T00:00:00").getDay()];
-const dayShort  = ds => DAYS_SHORT[new Date(ds+"T00:00:00").getDay()];
-const todayStr  = () => fmtDate(new Date());
-
 const fmtDate = d => {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 };
+
+const dayFull = ds =>
+  DAYS_FULL[new Date(ds + "T00:00:00").getDay()];
+
+const dayShort = ds =>
+  DAYS_SHORT[new Date(ds + "T00:00:00").getDay()];
+
+const todayStr = () => fmtDate(new Date());
 
 const isON = (s,e) => {
   if(!s||!e) return false;
