@@ -88,10 +88,11 @@ const dayFull   = ds => DAYS_FULL[new Date(ds+"T00:00:00").getDay()];
 const dayShort  = ds => DAYS_SHORT[new Date(ds+"T00:00:00").getDay()];
 const todayStr  = () => fmtDate(new Date());
 
-const genDates = (s,e) => {
-  const out=[],cur=new Date(s+"T00:00:00"),end=new Date(e+"T00:00:00");
-  while(cur<=end){ out.push(fmtDate(cur)); cur.setDate(cur.getDate()+1); }
-  return out;
+const fmtDate = d => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 };
 
 const isON = (s,e) => {
