@@ -167,9 +167,30 @@ export default function DonateModal({ t, isOpen, onClose, bmcUser, paypalUser, u
                     </div>
                   )}
                   
-                  <div style={{ textAlign: "center" }}>
+                  <div style={{ textAlign: "center", width: "100%" }}>
                     <div style={{ fontSize: 11, color: t.sub, fontWeight: 600 }}>UPI ID:</div>
-                    <div className="mono" style={{ fontSize: 12.5, fontWeight: 700, color: t.text, marginTop: 2 }}>{upiId}</div>
+                    <div className="mono" style={{ fontSize: 12.5, fontWeight: 700, color: t.text, marginTop: 2, marginBottom: 8 }}>{upiId}</div>
+                    <a
+                      href={`upi://pay?pa=${upiId}&pn=Smart%20Shift%20Planner&cu=INR`}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 6,
+                        width: "100%",
+                        padding: "8px 12px",
+                        borderRadius: 10,
+                        background: "#2563EB",
+                        color: "#fff",
+                        textDecoration: "none",
+                        fontWeight: 700,
+                        fontSize: 12,
+                        cursor: "pointer"
+                      }}
+                      className="btn-hover"
+                    >
+                      Pay via UPI App
+                    </a>
                   </div>
                 </div>
               )}
