@@ -1,10 +1,11 @@
-import { LayoutDashboard, Calendar, Clock, Download, Settings, Sun, Moon } from "lucide-react";
+import { LayoutDashboard, Calendar, Clock, Download, Settings, Sun, Moon, Home, SlidersHorizontal } from "lucide-react";
 
 const NAV_ITEMS = [
+  { id: "landing",   label: "Welcome Home", icon: Home },
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "calendar",  label: "Calendar View", icon: Calendar },
   { id: "roster",    label: "Master Roster", icon: Clock },
-  { id: "shifts",    label: "Shift Config", icon: Settings },
+  { id: "shifts",    label: "Shift Config", icon: SlidersHorizontal },
   { id: "export",    label: "Export",       icon: Download },
   { id: "settings",  label: "Settings",     icon: Settings },
 ];

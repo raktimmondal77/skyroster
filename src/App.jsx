@@ -7,6 +7,7 @@ import ShiftsView from "./components/ShiftsView.jsx";
 import ExportView from "./components/ExportView.jsx";
 import SettingsView from "./components/SettingsView.jsx";
 import CalendarView from "./components/CalendarView.jsx";
+import LandingView from "./components/LandingView.jsx";
 
 import {
   fmtDate,
@@ -124,7 +125,7 @@ const saveStore = (key, data) => {
 };
 
 export default function App() {
-  const [view, setView] = useState("dashboard");
+  const [view, setView] = useState("landing");
   const [dark, setDark] = useState(() => loadStore("ssrp_dark", false));
   const [mobOpen, setMobOpen] = useState(false);
   const [startDate, setStartDate] = useState("");
@@ -230,6 +231,7 @@ export default function App() {
   };
 
   const VIEWS = {
+    landing: <LandingView t={t} setView={setView} dark={dark} setDark={setDark} />,
     dashboard: <DashboardView t={t} roster={roster} shifts={shifts} setView={setView} />,
     calendar: <CalendarView t={t} roster={roster} shifts={shifts} updateEntry={updateEntry} />,
     roster: (
@@ -261,6 +263,28 @@ export default function App() {
       />
     ),
   };
+
+  if (view === "landing") {
+    return (
+      <div
+        data-dark={dark || undefined}
+        style={{
+          minHeight: "100vh",
+          background: t.bg,
+          color: t.text,
+          transition: "background .25s",
+          padding: "32px 24px",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          overflowX: "hidden",
+        }}
+      >
+        <GlobalStyle />
+        {VIEWS.landing}
+      </div>
+    );
+  }
 
   return (
     <div
