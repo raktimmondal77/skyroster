@@ -9,6 +9,7 @@ import SettingsView from "./components/SettingsView.jsx";
 import CalendarView from "./components/CalendarView.jsx";
 import LandingView from "./components/LandingView.jsx";
 import DonateModal from "./components/DonateModal.jsx";
+import SuccessModal from "./components/SuccessModal.jsx";
 import { trackEvent } from "./utils/analytics.js";
 
 import {
@@ -139,6 +140,7 @@ export default function App() {
   const [paypalUser, setPaypalUser] = useState(() => loadStore("ssrp_paypal", "https://www.paypal.com/ncp/payment/8CHC5VF72GMEU"));
   const [upiId, setUpiId] = useState(() => loadStore("ssrp_upi", "9883059530@upi"));
   const [showDonateModal, setShowDonateModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   useEffect(() => {
     saveStore("ssrp_shifts", shifts);
@@ -254,6 +256,11 @@ export default function App() {
     a.download = "smart-shift-roster.ics";
     a.click();
     URL.revokeObjectURL(url);
+
+    // Show thank you support modal trigger after 800ms
+    setTimeout(() => {
+      setShowSuccessModal(true);
+    }, 800);
   };
 
   const VIEWS = {
@@ -324,6 +331,12 @@ export default function App() {
           paypalUser={paypalUser}
           upiId={upiId}
         />
+        <SuccessModal
+          t={t}
+          isOpen={showSuccessModal}
+          onClose={() => setShowSuccessModal(false)}
+          onOpenDonate={handleOpenDonateModal}
+        />
       </div>
     );
   }
@@ -371,6 +384,12 @@ export default function App() {
         bmcUser={bmcUser}
         paypalUser={paypalUser}
         upiId={upiId}
+      />
+      <SuccessModal
+        t={t}
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        onOpenDonate={handleOpenDonateModal}
       />
     </div>
   );
