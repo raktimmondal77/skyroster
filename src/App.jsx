@@ -9,6 +9,7 @@ import SettingsView from "./components/SettingsView.jsx";
 import CalendarView from "./components/CalendarView.jsx";
 import LandingView from "./components/LandingView.jsx";
 import DonateModal from "./components/DonateModal.jsx";
+import { trackEvent } from "./utils/analytics.js";
 
 import {
   fmtDate,
@@ -158,6 +159,15 @@ export default function App() {
     saveStore("ssrp_upi", upiId);
   }, [upiId]);
 
+  useEffect(() => {
+    trackEvent("page_view");
+  }, []);
+
+  const handleOpenDonateModal = () => {
+    trackEvent("support_creator_view");
+    setShowDonateModal(true);
+  };
+
   const t = useMemo(() => T(dark), [dark]);
 
   const generateRoster = useCallback(() => {
@@ -167,6 +177,7 @@ export default function App() {
       return;
     }
     setRangeError("");
+    trackEvent("generate_roster", { startDate, endDate });
     const dates = genDates(startDate, endDate);
     const map = {};
     roster.forEach((r) => {
@@ -235,6 +246,7 @@ export default function App() {
   );
 
   const triggerDownloadICS = () => {
+    trackEvent("export_ics", { count: roster.filter((r) => r.shift).length });
     const blob = new Blob([buildICS(roster, shifts)], { type: "text/calendar;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -251,7 +263,7 @@ export default function App() {
         setView={setView}
         dark={dark}
         setDark={setDark}
-        setShowDonateModal={setShowDonateModal}
+        setShowDonateModal={handleOpenDonateModal}
       />
     ),
     dashboard: <DashboardView t={t} roster={roster} shifts={shifts} setView={setView} />,
@@ -336,7 +348,7 @@ export default function App() {
         t={t}
         open={mobOpen}
         setOpen={setMobOpen}
-        setShowDonateModal={setShowDonateModal}
+        setShowDonateModal={handleOpenDonateModal}
       />
       <div
         className="main-content"

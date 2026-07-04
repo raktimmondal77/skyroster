@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { X, Heart, ExternalLink, Coffee, CreditCard, DollarSign } from "lucide-react";
+import { trackEvent } from "../utils/analytics";
 
 export default function DonateModal({ t, isOpen, onClose, bmcUser, paypalUser, upiId }) {
   const [revealUpi, setRevealUpi] = useState(false);
@@ -78,6 +79,7 @@ export default function DonateModal({ t, isOpen, onClose, bmcUser, paypalUser, u
                     href={`https://buymeacoffee.com/${bmcUser}`}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={() => trackEvent("support_bmc_click")}
                     className="btn-hover"
                     style={{
                       display: "flex",
@@ -107,6 +109,7 @@ export default function DonateModal({ t, isOpen, onClose, bmcUser, paypalUser, u
                     href={paypalUser.startsWith("http") ? paypalUser : `https://paypal.me/${paypalUser}`}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={() => trackEvent("support_paypal_click")}
                     className="btn-hover"
                     style={{
                       display: "flex",
@@ -194,6 +197,7 @@ export default function DonateModal({ t, isOpen, onClose, bmcUser, paypalUser, u
                     </div>
                     <a
                       href={`upi://pay?pa=${upiId}&pn=Smart%20Shift%20Planner&cu=INR`}
+                      onClick={() => trackEvent("support_upi_click")}
                       style={{
                         display: "inline-flex",
                         alignItems: "center",

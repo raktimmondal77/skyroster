@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Sparkles, Calendar, DollarSign, Clock, ArrowRight, ShieldAlert, Award, ChevronRight, Moon, Sun, Heart } from "lucide-react";
+import { trackEvent } from "../utils/analytics.js";
 
 export default function LandingView({ t, setView, dark, setDark, setShowDonateModal }) {
   // Interactive Calculator State
@@ -107,7 +108,10 @@ export default function LandingView({ t, setView, dark, setDark, setShowDonateMo
             {dark ? <Sun size={18} /> : <Moon size={18} />}
           </button>
           <button
-            onClick={() => setView("dashboard")}
+            onClick={() => {
+              trackEvent("launch_planner", { location: "nav" });
+              setView("dashboard");
+            }}
             className="btn-hover"
             style={{
               padding: "8px 18px",
@@ -164,7 +168,10 @@ export default function LandingView({ t, setView, dark, setDark, setShowDonateMo
 
         <div style={{ display: "flex", gap: 14, marginTop: 10, flexWrap: "wrap", justifyContent: "center" }}>
           <button
-            onClick={() => setView("dashboard")}
+            onClick={() => {
+              trackEvent("launch_planner", { location: "hero" });
+              setView("dashboard");
+            }}
             className="btn-hover"
             style={{
               padding: "14px 32px",
@@ -504,7 +511,10 @@ export default function LandingView({ t, setView, dark, setDark, setShowDonateMo
             No sign-ups, no hidden costs. Access all shift building features in your web browser instantly.
           </p>
           <button
-            onClick={() => setView("dashboard")}
+            onClick={() => {
+              trackEvent("launch_planner", { location: "footer" });
+              setView("dashboard");
+            }}
             style={{
               marginTop: 10,
               padding: "14px 34px",
