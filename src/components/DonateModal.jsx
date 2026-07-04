@@ -1,6 +1,9 @@
+import { useState } from "react";
 import { X, Heart, ExternalLink, Coffee, CreditCard, DollarSign } from "lucide-react";
 
 export default function DonateModal({ t, isOpen, onClose, bmcUser, paypalUser, upiId }) {
+  const [revealUpi, setRevealUpi] = useState(false);
+
   if (!isOpen) return null;
 
   const hasConfig = bmcUser || paypalUser || upiId;
@@ -168,8 +171,27 @@ export default function DonateModal({ t, isOpen, onClose, bmcUser, paypalUser, u
                   )}
                   
                   <div style={{ textAlign: "center", width: "100%" }}>
-                    <div style={{ fontSize: 11, color: t.sub, fontWeight: 600 }}>UPI ID:</div>
-                    <div className="mono" style={{ fontSize: 12.5, fontWeight: 700, color: t.text, marginTop: 2, marginBottom: 8 }}>{upiId}</div>
+                    <div style={{ fontSize: 11, color: t.sub, fontWeight: 600 }}>
+                      UPI ID {revealUpi ? "" : "(click to reveal)"}:
+                    </div>
+                    <div 
+                      className="mono" 
+                      onClick={() => setRevealUpi(!revealUpi)}
+                      style={{ 
+                        fontSize: 12.5, 
+                        fontWeight: 700, 
+                        color: t.text, 
+                        marginTop: 2, 
+                        marginBottom: 8,
+                        cursor: "pointer",
+                        filter: revealUpi ? "none" : "blur(5.5px)",
+                        transition: "filter 0.15s ease",
+                        userSelect: revealUpi ? "auto" : "none"
+                      }}
+                      title={revealUpi ? "Click to blur" : "Click to reveal UPI ID"}
+                    >
+                      {upiId}
+                    </div>
                     <a
                       href={`upi://pay?pa=${upiId}&pn=Smart%20Shift%20Planner&cu=INR`}
                       style={{

@@ -135,8 +135,8 @@ export default function App() {
   const [shifts, setShifts] = useState(() => loadStore("ssrp_shifts", DEFAULT_SHIFTS));
   const [roster, setRoster] = useState(() => loadStore("ssrp_roster", []));
   const [bmcUser, setBmcUser] = useState(() => loadStore("ssrp_bmc", ""));
-  const [paypalUser, setPaypalUser] = useState(() => loadStore("ssrp_paypal", ""));
-  const [upiId, setUpiId] = useState(() => loadStore("ssrp_upi", ""));
+  const [paypalUser, setPaypalUser] = useState(() => loadStore("ssrp_paypal", "https://www.paypal.com/ncp/payment/8CHC5VF72GMEU"));
+  const [upiId, setUpiId] = useState(() => loadStore("ssrp_upi", "9883059530@upi"));
   const [showDonateModal, setShowDonateModal] = useState(false);
 
   useEffect(() => {
