@@ -186,12 +186,12 @@ export default function SettingsView({
           </label>
           
           <label style={{ display: "block" }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: t.sub, textTransform: "uppercase", letterSpacing: 0.8 }}>PayPal.me Username</span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: t.sub, textTransform: "uppercase", letterSpacing: 0.8 }}>PayPal Link or Username</span>
             <input
               type="text"
               value={paypalUser}
               onChange={(e) => setPaypalUser(e.target.value)}
-              placeholder="e.g. johndoe"
+              placeholder="e.g. https://www.paypal.com/ncp/payment/... or username"
               style={inputStyle(t)}
             />
           </label>

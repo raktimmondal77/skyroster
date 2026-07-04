@@ -101,7 +101,7 @@ export default function DonateModal({ t, isOpen, onClose, bmcUser, paypalUser, u
                 {/* PayPal Button */}
                 {paypalUser && (
                   <a
-                    href={`https://paypal.me/${paypalUser}`}
+                    href={paypalUser.startsWith("http") ? paypalUser : `https://paypal.me/${paypalUser}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="btn-hover"
