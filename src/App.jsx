@@ -282,12 +282,6 @@ export default function App() {
         setRoster={setRoster}
         setShifts={setShifts}
         DEFAULT_SHIFTS={DEFAULT_SHIFTS}
-        bmcUser={bmcUser}
-        setBmcUser={setBmcUser}
-        paypalUser={paypalUser}
-        setPaypalUser={setPaypalUser}
-        upiId={upiId}
-        setUpiId={setUpiId}
       />
     ),
   };

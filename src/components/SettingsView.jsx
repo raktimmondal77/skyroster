@@ -1,19 +1,6 @@
-import { Sun, Moon, Trash2, RotateCcw, Info, Heart } from "lucide-react";
+import { Sun, Moon, Trash2, RotateCcw, Info } from "lucide-react";
 
-export default function SettingsView({ 
-  t, 
-  dark, 
-  setDark, 
-  setRoster, 
-  setShifts, 
-  DEFAULT_SHIFTS,
-  bmcUser,
-  setBmcUser,
-  paypalUser,
-  setPaypalUser,
-  upiId,
-  setUpiId
-}) {
+export default function SettingsView({ t, dark, setDark, setRoster, setShifts, DEFAULT_SHIFTS }) {
   const clearRoster = () => {
     if (!window.confirm("Clear all roster data?")) return;
     setRoster([]);
@@ -152,63 +139,6 @@ export default function SettingsView({
         />
       </div>
 
-      {/* Support & Donations Setup */}
-      <div
-        style={{
-          background: t.card,
-          border: `1px solid ${t.cardBdr}`,
-          borderRadius: 20,
-          padding: "22px 24px",
-          boxShadow: "0 2px 14px rgba(0,0,0,.04)",
-          display: "flex",
-          flexDirection: "column",
-          gap: 16
-        }}
-      >
-        <div style={{ fontWeight: 700, color: t.text, fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}>
-          <Heart size={16} color="#EF4444" fill="#EF4444" />
-          <span>Support & Donation Links</span>
-        </div>
-        <div style={{ fontSize: 12.5, color: t.sub, lineHeight: 1.5 }}>
-          Set up donation profiles to show a "Support Project" modal on your landing page and sidebar.
-        </div>
-        
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <label style={{ display: "block" }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: t.sub, textTransform: "uppercase", letterSpacing: 0.8 }}>Buy Me a Coffee Username</span>
-            <input
-              type="text"
-              value={bmcUser}
-              onChange={(e) => setBmcUser(e.target.value)}
-              placeholder="e.g. johndoe"
-              style={inputStyle(t)}
-            />
-          </label>
-          
-          <label style={{ display: "block" }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: t.sub, textTransform: "uppercase", letterSpacing: 0.8 }}>PayPal Link or Username</span>
-            <input
-              type="text"
-              value={paypalUser}
-              onChange={(e) => setPaypalUser(e.target.value)}
-              placeholder="e.g. https://www.paypal.com/ncp/payment/... or username"
-              style={inputStyle(t)}
-            />
-          </label>
-
-          <label style={{ display: "block" }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: t.sub, textTransform: "uppercase", letterSpacing: 0.8 }}>UPI ID (e.g. UPI QR Code payments)</span>
-            <input
-              type="text"
-              value={upiId}
-              onChange={(e) => setUpiId(e.target.value)}
-              placeholder="e.g. johndoe@okaxis"
-              style={inputStyle(t)}
-            />
-          </label>
-        </div>
-      </div>
-
       <div
         style={{
           background: t.card,
@@ -256,16 +186,3 @@ export default function SettingsView({
     </div>
   );
 }
-
-const inputStyle = (t) => ({
-  width: "100%",
-  padding: "9px 13px",
-  borderRadius: 10,
-  border: `1.5px solid ${t.inputBdr}`,
-  background: t.inputBg,
-  color: t.inputTxt,
-  fontSize: 13,
-  fontFamily: "'DM Sans',sans-serif",
-  outline: "none",
-  marginTop: 6,
-});
