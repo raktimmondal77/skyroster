@@ -1,6 +1,6 @@
 // Custom 100% Free Google Sheets Analytics Tracker
 // To activate, replace the URL below with your deployed Google Apps Script Web App URL.
-const ANALYTICS_URL = "https://script.google.com/macros/s/AKfycbyfD9xP4_2xS2eZqV0b_n099m6qLlhjIqR_j26z7t8_l03u_zQ9U0P-6U_H54V6J44m/exec";
+const ANALYTICS_URL = "https://script.google.com/macros/s/AKfycby86NpHp2K8wJZ-YB4hu_60mrtHgxYQL_BOcJ3HjKgqr_45wSmeCdFjppRvA6id2RZi5g/exec";
 
 export const trackEvent = (eventName, eventData = {}) => {
   if (!ANALYTICS_URL || ANALYTICS_URL.includes("REPLACE_WITH_YOUR_WEB_APP_URL")) {
