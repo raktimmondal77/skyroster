@@ -1,4 +1,4 @@
-import { LayoutDashboard, Calendar, Clock, Download, Settings, Sun, Moon, Home, SlidersHorizontal } from "lucide-react";
+import { LayoutDashboard, Calendar, Clock, Download, Settings, Sun, Moon, Home, SlidersHorizontal, Heart } from "lucide-react";
 
 const NAV_ITEMS = [
   { id: "landing",   label: "Welcome Home", icon: Home },
@@ -10,7 +10,7 @@ const NAV_ITEMS = [
   { id: "settings",  label: "Settings",     icon: Settings },
 ];
 
-export default function Sidebar({ view, setView, dark, setDark, t, open, setOpen }) {
+export default function Sidebar({ view, setView, dark, setDark, t, open, setOpen, setShowDonateModal }) {
   return (
     <>
       {open && (
@@ -104,7 +104,30 @@ export default function Sidebar({ view, setView, dark, setDark, t, open, setOpen
             );
           })}
         </nav>
-        <div style={{ padding: "14px 12px 22px", borderTop: `1px solid ${t.sBdr}`, marginTop: 12 }}>
+        <div style={{ padding: "14px 12px 22px", borderTop: `1px solid ${t.sBdr}`, marginTop: 12, display: "flex", flexDirection: "column", gap: 6 }}>
+          <button
+            className="nav-item btn-hover"
+            onClick={() => setShowDonateModal(true)}
+            style={{
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              padding: "11px 14px",
+              borderRadius: 12,
+              border: "1px solid rgba(37,99,235,0.2)",
+              cursor: "pointer",
+              background: "linear-gradient(135deg, rgba(37,99,235,0.1), rgba(124,58,237,0.1))",
+              color: "#2563EB",
+              fontSize: 13,
+              fontWeight: 700,
+              fontFamily: "'DM Sans',sans-serif",
+              textAlign: "left",
+            }}
+          >
+            <Heart size={18} color="#EF4444" fill="#EF4444" />
+            Support Creator
+          </button>
           <button
             className="nav-item"
             role="switch"

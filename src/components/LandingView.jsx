@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Sparkles, Calendar, DollarSign, Clock, ArrowRight, ShieldAlert, Award, ChevronRight, Moon, Sun } from "lucide-react";
+import { Sparkles, Calendar, DollarSign, Clock, ArrowRight, ShieldAlert, Award, ChevronRight, Moon, Sun, Heart } from "lucide-react";
 
-export default function LandingView({ t, setView, dark, setDark }) {
+export default function LandingView({ t, setView, dark, setDark, setShowDonateModal }) {
   // Interactive Calculator State
   const [rate, setRate] = useState(250);
   const [hours, setHours] = useState(40);
@@ -72,6 +72,25 @@ export default function LandingView({ t, setView, dark, setDark }) {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+          <button
+            onClick={() => setShowDonateModal(true)}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              color: "#EF4444",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: 12.5,
+              fontWeight: 700,
+              fontFamily: "'DM Sans',sans-serif"
+            }}
+            className="btn-hover"
+          >
+            <Heart size={15} fill="#EF4444" />
+            Support
+          </button>
           <button
             onClick={() => setDark(!dark)}
             aria-label="Toggle theme"

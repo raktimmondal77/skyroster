@@ -8,6 +8,7 @@ import ExportView from "./components/ExportView.jsx";
 import SettingsView from "./components/SettingsView.jsx";
 import CalendarView from "./components/CalendarView.jsx";
 import LandingView from "./components/LandingView.jsx";
+import DonateModal from "./components/DonateModal.jsx";
 
 import {
   fmtDate,
@@ -133,6 +134,10 @@ export default function App() {
   const [rangeError, setRangeError] = useState("");
   const [shifts, setShifts] = useState(() => loadStore("ssrp_shifts", DEFAULT_SHIFTS));
   const [roster, setRoster] = useState(() => loadStore("ssrp_roster", []));
+  const [bmcUser, setBmcUser] = useState(() => loadStore("ssrp_bmc", ""));
+  const [paypalUser, setPaypalUser] = useState(() => loadStore("ssrp_paypal", ""));
+  const [upiId, setUpiId] = useState(() => loadStore("ssrp_upi", ""));
+  const [showDonateModal, setShowDonateModal] = useState(false);
 
   useEffect(() => {
     saveStore("ssrp_shifts", shifts);
@@ -143,6 +148,15 @@ export default function App() {
   useEffect(() => {
     saveStore("ssrp_dark", dark);
   }, [dark]);
+  useEffect(() => {
+    saveStore("ssrp_bmc", bmcUser);
+  }, [bmcUser]);
+  useEffect(() => {
+    saveStore("ssrp_paypal", paypalUser);
+  }, [paypalUser]);
+  useEffect(() => {
+    saveStore("ssrp_upi", upiId);
+  }, [upiId]);
 
   const t = useMemo(() => T(dark), [dark]);
 
@@ -231,7 +245,15 @@ export default function App() {
   };
 
   const VIEWS = {
-    landing: <LandingView t={t} setView={setView} dark={dark} setDark={setDark} />,
+    landing: (
+      <LandingView
+        t={t}
+        setView={setView}
+        dark={dark}
+        setDark={setDark}
+        setShowDonateModal={setShowDonateModal}
+      />
+    ),
     dashboard: <DashboardView t={t} roster={roster} shifts={shifts} setView={setView} />,
     calendar: <CalendarView t={t} roster={roster} shifts={shifts} updateEntry={updateEntry} />,
     roster: (
@@ -260,6 +282,12 @@ export default function App() {
         setRoster={setRoster}
         setShifts={setShifts}
         DEFAULT_SHIFTS={DEFAULT_SHIFTS}
+        bmcUser={bmcUser}
+        setBmcUser={setBmcUser}
+        paypalUser={paypalUser}
+        setPaypalUser={setPaypalUser}
+        upiId={upiId}
+        setUpiId={setUpiId}
       />
     ),
   };
@@ -282,6 +310,14 @@ export default function App() {
       >
         <GlobalStyle />
         {VIEWS.landing}
+        <DonateModal
+          t={t}
+          isOpen={showDonateModal}
+          onClose={() => setShowDonateModal(false)}
+          bmcUser={bmcUser}
+          paypalUser={paypalUser}
+          upiId={upiId}
+        />
       </div>
     );
   }
@@ -306,6 +342,7 @@ export default function App() {
         t={t}
         open={mobOpen}
         setOpen={setMobOpen}
+        setShowDonateModal={setShowDonateModal}
       />
       <div
         className="main-content"
@@ -321,6 +358,14 @@ export default function App() {
         />
         <main style={{ flex: 1, padding: "28px 32px", overflowY: "auto" }}>{VIEWS[view]}</main>
       </div>
+      <DonateModal
+        t={t}
+        isOpen={showDonateModal}
+        onClose={() => setShowDonateModal(false)}
+        bmcUser={bmcUser}
+        paypalUser={paypalUser}
+        upiId={upiId}
+      />
     </div>
   );
 }
