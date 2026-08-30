@@ -39,6 +39,7 @@ export const useAppStore = create(
       authLoading: true,
       showDonateModal: false,
       showSuccessModal: false,
+      hasSeenWelcome: false,
 
       // Env vars defaults
       bmcUser: import.meta.env.VITE_DEFAULT_BMC || "",
@@ -61,6 +62,19 @@ export const useAppStore = create(
       setAuthLoading: (authLoading) => set({ authLoading }),
       setShowDonateModal: (showDonateModal) => set({ showDonateModal }),
       setShowSuccessModal: (showSuccessModal) => set({ showSuccessModal }),
+      completeWelcome: () => set({ hasSeenWelcome: true }),
+
+      restoreData: (parsedData) => {
+        const { roster, shifts, teamId, userName, dark } = parsedData;
+        set((state) => ({
+          ...state,
+          ...(roster ? { roster } : {}),
+          ...(shifts ? { shifts } : {}),
+          ...(teamId !== undefined ? { teamId } : {}),
+          ...(userName !== undefined ? { userName } : {}),
+          ...(dark !== undefined ? { dark } : {}),
+        }));
+      },
 
       // Helpers & Actions
       updateEntry: (idx, field, value) =>

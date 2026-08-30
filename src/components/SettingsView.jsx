@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { Trash2, RotateCcw, Info } from "lucide-react";
+import { useState, useRef } from "react";
+import { Trash2, RotateCcw, Info, Download, Upload } from "lucide-react";
 import toast from "react-hot-toast";
 import ConfirmDialog from "./ConfirmDialog.jsx";
+import { useAppStore } from "../store/useAppStore.js";
 
 const Row = ({ label, sub, right, t }) => (
   <div
@@ -29,6 +30,52 @@ export default function SettingsView({ t, dark, setDark, setRoster, setShifts, D
     confirmLabel: "",
     onConfirm: () => {},
   });
+
+  const fileInputRef = useRef(null);
+
+  const handleExport = () => {
+    try {
+      const state = useAppStore.getState();
+      const data = {
+        roster: state.roster,
+        shifts: state.shifts,
+        teamId: state.teamId,
+        userName: state.userName,
+        dark: state.dark
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `skyroster-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Backup downloaded successfully!");
+    } catch (err) {
+      toast.error("Failed to export backup.");
+    }
+  };
+
+  const handleImport = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const json = JSON.parse(event.target.result);
+        if (json.roster && json.shifts) {
+          useAppStore.getState().restoreData(json);
+          toast.success("Data restored successfully!");
+        } else {
+          toast.error("Invalid backup file.");
+        }
+      } catch (err) {
+        toast.error("Failed to parse file.");
+      }
+      e.target.value = null;
+    };
+    reader.readAsText(file);
+  };
 
   const handleClearRoster = () => {
     setDialogState({
@@ -179,6 +226,67 @@ export default function SettingsView({ t, dark, setDark, setRoster, setShifts, D
               <RotateCcw size={13} />
               Reset
             </button>
+          }
+        />
+        <Row t={t}
+          label="Download Backup"
+          sub="Export your roster and settings to a JSON file"
+          right={
+            <button
+              onClick={handleExport}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "7px 16px",
+                borderRadius: 9,
+                border: `1.5px solid ${t.cardBdr}`,
+                background: "transparent",
+                color: t.accent,
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+                fontFamily: "'DM Sans',sans-serif",
+              }}
+            >
+              <Download size={13} />
+              Backup
+            </button>
+          }
+        />
+        <Row t={t}
+          label="Restore Backup"
+          sub="Import roster and settings from a JSON file"
+          right={
+            <>
+              <input
+                type="file"
+                accept=".json"
+                ref={fileInputRef}
+                style={{ display: "none" }}
+                onChange={handleImport}
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "7px 16px",
+                  borderRadius: 9,
+                  border: `1.5px solid ${t.cardBdr}`,
+                  background: "transparent",
+                  color: t.accent,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  fontFamily: "'DM Sans',sans-serif",
+                }}
+              >
+                <Upload size={13} />
+                Restore
+              </button>
+            </>
           }
         />
         <Row t={t}

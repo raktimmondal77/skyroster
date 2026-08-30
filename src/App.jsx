@@ -16,6 +16,7 @@ import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import AuthSplash from "./components/AuthSplash.jsx";
 import TeamView from "./components/TeamView.jsx";
 import ShortcutsModal from "./components/ShortcutsModal.jsx";
+import WelcomeModal from "./components/WelcomeModal.jsx";
 import { useHotkeys } from "react-hotkeys-hook";
 import toast from "react-hot-toast";
 import { trackEvent } from "./utils/analytics.js";
@@ -335,6 +336,8 @@ function MainApp() {
     upiId,
     showDonateModal,
     showSuccessModal,
+    hasSeenWelcome,
+    completeWelcome,
   } = useAppStore();
 
   const t = useMemo(() => T(dark), [dark]);
@@ -369,6 +372,13 @@ function MainApp() {
     }
     return subscribeToTeam(teamId, setTeamData);
   }, [teamId, setTeamData]);
+
+  // Self-heal corrupted shifts
+  useEffect(() => {
+    if (!Array.isArray(shifts)) {
+      setShifts(DEFAULT_SHIFTS);
+    }
+  }, [shifts, setShifts]);
 
   // Debounced Cloud & Team Sync
   const syncTimerRef = useRef(null);
@@ -471,6 +481,12 @@ function MainApp() {
           onClose={() => setShowSuccessModal(false)}
           onOpenDonate={handleOpenDonateModal}
         />
+        {!hasSeenWelcome && (
+          <WelcomeModal 
+            t={t} 
+            onClose={completeWelcome} 
+          />
+        )}
       </div>
     );
   }

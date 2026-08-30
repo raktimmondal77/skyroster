@@ -7,6 +7,9 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
   const [selectedDateStr, setSelectedDateStr] = useState(null);
   const [visibleTeammates, setVisibleTeammates] = useState({});
 
+  const [touchStart, setTouchStart] = useState(null);
+  const [touchEnd, setTouchEnd] = useState(null);
+
   // Auto-show all teammates when teamData loads
   useEffect(() => {
     if (teamData?.members) {
@@ -23,6 +26,20 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
   };
   const nextMonth = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+  };
+
+  // Swipe handlers
+  const minSwipeDistance = 50;
+  const onTouchStart = (e) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+  const onTouchMove = (e) => setTouchEnd(e.targetTouches[0].clientX);
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    if (distance > minSwipeDistance) nextMonth(); // Swipe Left
+    if (distance < -minSwipeDistance) prevMonth(); // Swipe Right
   };
 
   // Calendar calculations
@@ -173,7 +190,12 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
       )}
 
       {/* Calendar Grid */}
-      <div style={{ background: t.card, border: `1px solid ${t.cardBdr}`, borderRadius: 24, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,.03)" }}>
+      <div 
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        style={{ background: t.card, border: `1px solid ${t.cardBdr}`, borderRadius: 24, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,.03)" }}
+      >
         {/* Week Days Headers */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", background: t.tHead, borderBottom: `1px solid ${t.tBdr}` }}>
           {DAYS_SHORT.map((day, i) => (
