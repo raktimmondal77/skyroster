@@ -246,7 +246,8 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
                   justifyContent: "space-between",
                   transition: "background .15s",
                   minHeight: 100,
-                  border: isToday ? `2px solid #2563EB` : "none",
+                  boxSizing: "border-box",
+                  boxShadow: isToday ? `inset 0 0 0 2px #2563EB` : "none",
                   opacity: cell.isCurrentMonth ? 1 : 0.4,
                 }}
                 className="row-hover"
