@@ -52,6 +52,7 @@ export default function SettingsView({ t, dark, setDark, setRoster, setShifts, D
       URL.revokeObjectURL(url);
       toast.success("Backup downloaded successfully!");
     } catch (err) {
+      console.error(err);
       toast.error("Failed to export backup.");
     }
   };
@@ -70,6 +71,7 @@ export default function SettingsView({ t, dark, setDark, setRoster, setShifts, D
           toast.error("Invalid backup file.");
         }
       } catch (err) {
+        console.error(err);
         toast.error("Failed to parse file.");
       }
       e.target.value = null;

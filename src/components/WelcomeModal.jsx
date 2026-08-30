@@ -1,4 +1,3 @@
-import React from "react";
 import { Sparkles, MousePointerClick, Users, X } from "lucide-react";
 
 export default function WelcomeModal({ t, onClose }) {

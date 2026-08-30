@@ -322,6 +322,7 @@ function MainApp() {
     roster,
     setRoster,
     shifts,
+    setShifts,
     teamId,
     userName,
     setTeamData,
