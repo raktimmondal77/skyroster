@@ -1,10 +1,21 @@
-import { useState, useMemo } from "react";
-import { ChevronLeft, ChevronRight, Clock, MapPin, AlignLeft, X } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { ChevronLeft, ChevronRight, MapPin, AlignLeft, X } from "lucide-react";
 import { fmtDate, DAYS_SHORT, isON, calcHrs } from "../utils/rosterHelpers";
 
-export default function CalendarView({ t, roster, shifts, updateEntry }) {
+export default function CalendarView({ t, roster, shifts, updateEntry, teamData, userName }) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDateStr, setSelectedDateStr] = useState(null);
+  const [visibleTeammates, setVisibleTeammates] = useState({});
+
+  // Auto-show all teammates when teamData loads
+  useEffect(() => {
+    if (teamData?.members) {
+      const init = {};
+      Object.keys(teamData.members).forEach(m => init[m] = true);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setVisibleTeammates(prev => ({...init, ...prev}));
+    }
+  }, [teamData]);
 
   // Month navigation
   const prevMonth = () => {
@@ -143,6 +154,24 @@ export default function CalendarView({ t, roster, shifts, updateEntry }) {
         ))}
       </div>
 
+      {/* Teammates Toggle */}
+      {teamData?.members && Object.keys(teamData.members).length > 1 && (
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", padding: "12px 16px", background: t.card, border: `1px solid ${t.cardBdr}`, borderRadius: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: t.sub, display: "flex", alignItems: "center", marginRight: 8 }}>Show Team:</div>
+          {Object.keys(teamData.members).filter(m => m !== userName).map(member => (
+            <label key={member} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: t.text, cursor: "pointer", background: visibleTeammates[member] ? "rgba(37,99,235,0.1)" : "transparent", padding: "4px 10px", borderRadius: 99, border: `1px solid ${visibleTeammates[member] ? "#2563EB" : t.inputBdr}`, transition: "all 0.2s" }}>
+              <input 
+                type="checkbox" 
+                checked={!!visibleTeammates[member]} 
+                onChange={() => setVisibleTeammates(prev => ({...prev, [member]: !prev[member]}))}
+                style={{ accentColor: "#2563EB", cursor: "pointer" }}
+              />
+              <span style={{ fontWeight: 600 }}>{member}</span>
+            </label>
+          ))}
+        </div>
+      )}
+
       {/* Calendar Grid */}
       <div style={{ background: t.card, border: `1px solid ${t.cardBdr}`, borderRadius: 24, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,.03)" }}>
         {/* Week Days Headers */}
@@ -162,6 +191,21 @@ export default function CalendarView({ t, roster, shifts, updateEntry }) {
             const sh = row?.shift ? shifts.find(s => s.code === row.shift) : null;
             const isToday = dateStr === fmtDate(new Date());
             const weekend = [0, 6].includes(cell.date.getDay());
+            
+            // Get teammates' shifts for this date
+            const teamShifts = [];
+            if (teamData?.members) {
+              Object.keys(teamData.members).forEach(member => {
+                if (member !== userName && visibleTeammates[member]) {
+                  const mRoster = teamData.members[member];
+                  const mRow = mRoster.find(r => r.date === dateStr);
+                  if (mRow && mRow.shift) {
+                    const mSh = shifts.find(s => s.code === mRow.shift);
+                    if (mSh) teamShifts.push({ member, shift: mSh, startTime: mRow.startTime });
+                  }
+                }
+              });
+            }
 
             return (
               <div
@@ -232,6 +276,18 @@ export default function CalendarView({ t, roster, shifts, updateEntry }) {
                     </div>
                   ) : (
                     <div style={{ height: 20 }} />
+                  )}
+                  
+                  {/* Teammates shifts */}
+                  {teamShifts.length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 3, marginTop: 4 }}>
+                      {teamShifts.map((ts, tIdx) => (
+                        <div key={tIdx} style={{ display: "flex", alignItems: "center", gap: 4, background: t.is ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.7)", padding: "2px 6px", borderRadius: 6, borderLeft: `3px solid ${ts.shift.color}` }}>
+                          <span style={{ fontSize: 10, fontWeight: 600, color: t.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{ts.member}</span>
+                          <span style={{ fontSize: 9, fontWeight: 800, color: ts.shift.color }}>{ts.shift.code}</span>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
 

@@ -1,13 +1,14 @@
-import { LayoutDashboard, Calendar, Clock, Download, Settings, Sun, Moon, Home, SlidersHorizontal, Heart } from "lucide-react";
+import { LayoutDashboard, Calendar, Clock, Download, Settings, Sun, Moon, Home, SlidersHorizontal, Heart, Users, ClipboardList } from "lucide-react";
 
 const NAV_ITEMS = [
   { id: "landing",   label: "Welcome Home", icon: Home },
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "calendar",  label: "Calendar View", icon: Calendar },
-  { id: "roster",    label: "Master Roster", icon: Clock },
-  { id: "shifts",    label: "Shift Config", icon: SlidersHorizontal },
-  { id: "export",    label: "Export",       icon: Download },
-  { id: "settings",  label: "Settings",     icon: Settings },
+  { id: "roster",    label: "Master Roster", icon: ClipboardList },
+  { id: "calendar",  label: "Calendar", icon: Calendar },
+  { id: "team",      label: "Team Sync", icon: Users },
+  { id: "shifts",    label: "Shift Types", icon: Clock },
+  { id: "export",    label: "Export ICS", icon: Download },
+  { id: "settings",  label: "Settings", icon: Settings },
 ];
 
 export default function Sidebar({ view, setView, dark, setDark, t, open, setOpen, setShowDonateModal }) {

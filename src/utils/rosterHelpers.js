@@ -119,6 +119,52 @@ export const buildICS = (roster, shifts) => {
   return lines.join("\r\n");
 };
 
+/* Team ICS Builder */
+export const buildTeamICS = (teamData) => {
+  const fi = (d) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Smart Shift Roster Planner//EN",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    "X-WR-CALNAME:Team Roster",
+  ];
+  
+  if (!teamData || !teamData.members) return "";
+  
+  Object.keys(teamData.members).forEach(member => {
+    const roster = teamData.members[member];
+    roster.forEach((r) => {
+      // Skip if off or missing times
+      if (!r.shift || r.shift === "F" || !r.startTime || !r.endTime) return;
+      
+      const [sH, sM] = r.startTime.split(":").map(Number);
+      const [eH, eM] = r.endTime.split(":").map(Number);
+      const ds = new Date(r.date + "T00:00:00");
+      ds.setHours(sH, sM, 0, 0);
+      const de = new Date(r.date + "T00:00:00");
+      if (isON(r.startTime, r.endTime)) de.setDate(de.getDate() + 1);
+      de.setHours(eH, eM, 0, 0);
+      const uid = `${member.replace(/\s+/g, '')}-${r.date}-${r.shift}@ssrp`;
+      lines.push(
+        "BEGIN:VEVENT",
+        `UID:${uid}`,
+        `DTSTAMP:${fi(new Date())}`,
+        `DTSTART:${fi(ds)}`,
+        `DTEND:${fi(de)}`,
+        `SUMMARY:${esc(member + ": " + (r.eventTitle || r.shift))}`
+      );
+      if (r.location) lines.push(`LOCATION:${esc(r.location)}`);
+      if (r.notes) lines.push(`DESCRIPTION:${esc(r.notes)}`);
+      lines.push("END:VEVENT");
+    });
+  });
+  
+  lines.push("END:VCALENDAR");
+  return lines.join("\r\n");
+};
+
 /* Earnings Calculation */
 export const calcEarnings = (roster, shifts) => {
   let total = 0;

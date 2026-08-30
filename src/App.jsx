@@ -10,7 +10,12 @@ import CalendarView from "./components/CalendarView.jsx";
 import LandingView from "./components/LandingView.jsx";
 import DonateModal from "./components/DonateModal.jsx";
 import SuccessModal from "./components/SuccessModal.jsx";
+import TeamView from "./components/TeamView.jsx";
 import { trackEvent } from "./utils/analytics.js";
+import { subscribeToTeam, syncMyRoster } from "./utils/teamSync.js";
+import { auth } from "./utils/firebase.js";
+import { onAuthStateChanged } from "firebase/auth";
+import { saveRosterToCloud, loadRosterFromCloud, signInWithGoogle, logoutUser } from "./utils/authSync.js";
 
 import {
   fmtDate,
@@ -124,11 +129,16 @@ const loadStore = (key, fallback) => {
 const saveStore = (key, data) => {
   try {
     localStorage.setItem(key, JSON.stringify({ __v: STORE_VERSION, data }));
-  } catch {}
+  } catch (e) {
+    console.error(e);
+  }
 };
 
 export default function App() {
-  const [view, setView] = useState("landing");
+  const [view, setView] = useState(() => {
+    const existingRoster = loadStore("ssrp_roster", []);
+    return existingRoster.length > 0 ? "dashboard" : "landing";
+  });
   const [dark, setDark] = useState(() => loadStore("ssrp_dark", false));
   const [mobOpen, setMobOpen] = useState(false);
   const [startDate, setStartDate] = useState("");
@@ -141,6 +151,54 @@ export default function App() {
   const [upiId, setUpiId] = useState(() => loadStore("ssrp_upi", "9883059530@upi"));
   const [showDonateModal, setShowDonateModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [teamId, setTeamId] = useState(() => loadStore("ssrp_team_id", ""));
+  const [userName, setUserName] = useState(() => loadStore("ssrp_user_name", ""));
+  const [teamData, setTeamData] = useState(null);
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  useEffect(() => {
+    if (!auth) { setAuthLoading(false); return; }
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        // Load roster from cloud on login
+        const cloudRoster = await loadRosterFromCloud(currentUser.uid);
+        if (cloudRoster && cloudRoster.length > 0) {
+          setRoster(cloudRoster);
+          setView("dashboard");
+        }
+      }
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    saveStore("ssrp_team_id", teamId);
+  }, [teamId]);
+  useEffect(() => {
+    saveStore("ssrp_user_name", userName);
+  }, [userName]);
+
+  useEffect(() => {
+    if (teamId) {
+      return subscribeToTeam(teamId, setTeamData);
+    } else {
+      setTimeout(() => setTeamData(null), 0);
+    }
+  }, [teamId]);
+
+  useEffect(() => {
+    // Sync to Team
+    if (teamId && userName && roster.length > 0) {
+      syncMyRoster(teamId, userName, roster);
+    }
+    // Sync to Cloud
+    if (user && roster.length > 0) {
+      saveRosterToCloud(user.uid, roster);
+    }
+  }, [roster, teamId, userName, user]);
 
   useEffect(() => {
     saveStore("ssrp_shifts", shifts);
@@ -274,7 +332,8 @@ export default function App() {
       />
     ),
     dashboard: <DashboardView t={t} roster={roster} shifts={shifts} setView={setView} />,
-    calendar: <CalendarView t={t} roster={roster} shifts={shifts} updateEntry={updateEntry} />,
+    calendar: <CalendarView t={t} roster={roster} shifts={shifts} updateEntry={updateEntry} teamData={teamData} userName={userName} />,
+    team: <TeamView t={t} roster={roster} teamId={teamId} setTeamId={setTeamId} userName={userName} setUserName={setUserName} teamData={teamData} />,
     roster: (
       <RosterView
         t={t}
@@ -301,6 +360,9 @@ export default function App() {
         setRoster={setRoster}
         setShifts={setShifts}
         DEFAULT_SHIFTS={DEFAULT_SHIFTS}
+        user={user}
+        signInWithGoogle={signInWithGoogle}
+        logoutUser={logoutUser}
       />
     ),
   };

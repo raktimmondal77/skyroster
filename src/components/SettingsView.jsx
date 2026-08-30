@@ -1,6 +1,24 @@
 import { Sun, Moon, Trash2, RotateCcw, Info } from "lucide-react";
 
-export default function SettingsView({ t, dark, setDark, setRoster, setShifts, DEFAULT_SHIFTS }) {
+const Row = ({ label, sub, right, t }) => (
+  <div
+    style={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      padding: "16px 0",
+      borderBottom: `1px solid ${t.tBdr}`,
+    }}
+  >
+    <div>
+      <div style={{ fontWeight: 600, fontSize: 14, color: t.text }}>{label}</div>
+      {sub && <div style={{ fontSize: 12, color: t.sub, marginTop: 3 }}>{sub}</div>}
+    </div>
+    {right}
+  </div>
+);
+
+export default function SettingsView({ t, dark, setDark, setRoster, setShifts, DEFAULT_SHIFTS, user, signInWithGoogle, logoutUser }) {
   const clearRoster = () => {
     if (!window.confirm("Clear all roster data?")) return;
     setRoster([]);
@@ -10,24 +28,6 @@ export default function SettingsView({ t, dark, setDark, setRoster, setShifts, D
     if (!window.confirm("Reset shifts to defaults?")) return;
     setShifts(DEFAULT_SHIFTS);
   };
-
-  const Row = ({ label, sub, right }) => (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "16px 0",
-        borderBottom: `1px solid ${t.tBdr}`,
-      }}
-    >
-      <div>
-        <div style={{ fontWeight: 600, fontSize: 14, color: t.text }}>{label}</div>
-        {sub && <div style={{ fontSize: 12, color: t.sub, marginTop: 3 }}>{sub}</div>}
-      </div>
-      {right}
-    </div>
-  );
 
   return (
     <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 22, maxWidth: 560 }}>
@@ -49,7 +49,7 @@ export default function SettingsView({ t, dark, setDark, setRoster, setShifts, D
           boxShadow: "0 2px 14px rgba(0,0,0,.04)",
         }}
       >
-        <Row
+        <Row t={t}
           label="Dark Theme"
           sub="Toggle deep contrast dark mode colors"
           right={
@@ -85,7 +85,7 @@ export default function SettingsView({ t, dark, setDark, setRoster, setShifts, D
             </button>
           }
         />
-        <Row
+        <Row t={t}
           label="Clear Roster"
           sub="Permanently delete all scheduled dates and notes"
           right={
@@ -111,7 +111,7 @@ export default function SettingsView({ t, dark, setDark, setRoster, setShifts, D
             </button>
           }
         />
-        <Row
+        <Row t={t}
           label="Reset Shifts"
           sub="Revert custom templates back to system presets"
           right={
@@ -135,6 +135,45 @@ export default function SettingsView({ t, dark, setDark, setRoster, setShifts, D
               <RotateCcw size={13} />
               Reset
             </button>
+          }
+        />
+        <Row t={t}
+          label="Cloud Backup (Google)"
+          sub={user ? `Signed in as ${user.email}. Shifts are backing up automatically.` : "Sign in with Google to sync your shifts across devices"}
+          right={
+            user ? (
+              <button
+                onClick={logoutUser}
+                style={{
+                  padding: "7px 16px",
+                  borderRadius: 9,
+                  border: `1.5px solid ${t.cardBdr}`,
+                  background: "transparent",
+                  color: t.sub,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                Sign Out
+              </button>
+            ) : (
+              <button
+                onClick={signInWithGoogle}
+                style={{
+                  padding: "7px 16px",
+                  borderRadius: 9,
+                  border: "none",
+                  background: "#4285F4",
+                  color: "#fff",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                Sign In
+              </button>
+            )
           }
         />
       </div>
