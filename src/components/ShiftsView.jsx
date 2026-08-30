@@ -33,16 +33,16 @@ export default function ShiftsView({ t, shifts, setShifts }) {
     const finalForm = { ...form, hourlyRate: cleanedRate };
 
     if (editId) {
-      setShifts((p) => p.map((s) => (s.id === editId ? { ...finalForm, id: editId } : s)));
+      setShifts(shifts.map((s) => (s.id === editId ? { ...finalForm, id: editId } : s)));
     } else {
-      setShifts((p) => [...p, { ...finalForm, id: "s" + Date.now() }]);
+      setShifts([...shifts, { ...finalForm, id: "s" + Date.now() }]);
     }
     cancel();
   };
 
   const del = (id) => {
     if (!window.confirm("Delete this shift?")) return;
-    setShifts((p) => p.filter((s) => s.id !== id));
+    setShifts(shifts.filter((s) => s.id !== id));
   };
 
   return (
@@ -248,7 +248,7 @@ export default function ShiftsView({ t, shifts, setShifts }) {
 
       {/* Shifts Templates Cards */}
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {shifts.map((sh) => (
+        {Array.isArray(shifts) && shifts.map((sh) => (
           <div
             key={sh.id}
             className="card-lift"

@@ -54,32 +54,6 @@ export const esc = (v = "") =>
     .replace(/,/g, "\\,")
     .replace(/\r?\n/g, "\\n");
 
-/* Pattern Detection */
-export const detectPattern = (roster) => {
-  const seq = roster.map((r) => r.shift || null);
-  const assigned = seq.filter(Boolean);
-  if (assigned.length < 4) return null;
-  // Work on the leading contiguous assigned block
-  let lead = [];
-  for (const code of seq) {
-    if (!code) break;
-    lead.push(code);
-  }
-  if (lead.length < 4) return null;
-  for (let len = 2; len <= Math.min(14, Math.floor(lead.length / 2)); len++) {
-    const base = lead.slice(0, len);
-    let ok = true;
-    for (let i = len; i < lead.length; i++) {
-      if (lead[i] !== base[i % len]) {
-        ok = false;
-        break;
-      }
-    }
-    if (ok) return base; // shortest valid cycle
-  }
-  return null;
-};
-
 /* ICS Builder */
 export const buildICS = (roster, shifts) => {
   const fi = (d) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");

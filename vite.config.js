@@ -33,7 +33,7 @@ export default defineConfig({
           if (id.includes('node_modules')) {
             if (id.includes('firebase')) return 'vendor-firebase';
             if (id.includes('recharts')) return 'vendor-charts';
-            if (id.includes('lucide-react') || id.includes('framer-motion') || id.includes('react-hot-toast')) return 'vendor-ui';
+            if (id.includes('lucide-react') || id.includes('react-hot-toast')) return 'vendor-ui';
             return 'vendor-libs';
           }
         }

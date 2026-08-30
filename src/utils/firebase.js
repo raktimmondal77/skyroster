@@ -18,7 +18,6 @@ try {
   db = getFirestore(app);
   auth = getAuth(app);
   provider = new GoogleAuthProvider();
-  console.log("Firebase initialized successfully");
 } catch (error) {
   console.error("Error initializing Firebase:", error);
 }
