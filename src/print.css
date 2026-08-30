@@ -1,0 +1,72 @@
+/* SkyRoster Print Stylesheet */
+@media print {
+  /* Hide non-printable UI elements */
+  .sidebar-el,
+  header,
+  nav,
+  button,
+  .no-print,
+  .mob-ham,
+  [role="dialog"],
+  .glass {
+    display: none !important;
+  }
+
+  body, html {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 11pt !important;
+  }
+
+  .main-content {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  main {
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .roster-table-wrap {
+    overflow: visible !important;
+  }
+
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    page-break-inside: auto;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  th, td {
+    border: 1px solid #d1d5db !important;
+    padding: 8px !important;
+    color: #000000 !important;
+    background: transparent !important;
+  }
+
+  th {
+    background-color: #f3f4f6 !important;
+    font-weight: bold !important;
+  }
+
+  /* Show a clean print header */
+  .print-header {
+    display: block !important;
+    margin-bottom: 20px;
+  }
+}
+
+.print-header {
+  display: none;
+}

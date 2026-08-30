@@ -55,6 +55,15 @@ export default function RosterView({
     };
   }, [roster]);
 
+  const estimatedEarnings = useMemo(() => {
+    return roster.reduce((total, r) => {
+      const sh = shifts.find((s) => s.code === r.shift);
+      if (!sh || sh.isOff || !r.startTime || !r.endTime) return total;
+      const hrs = calcHrs(r.startTime, r.endTime);
+      return total + hrs * (sh.hourlyRate || 0);
+    }, 0);
+  }, [roster, shifts]);
+
   // Compute conflicts to display inline in the table
   const warnings = useMemo(() => checkConflicts(roster, shifts), [roster, shifts]);
 
@@ -67,13 +76,44 @@ export default function RosterView({
 
   return (
     <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-      <div>
-        <div className="sora" style={{ fontSize: 28, fontWeight: 900, color: t.text, letterSpacing: "-0.6px" }}>
-          Master Roster
+      {/* Print-only Header */}
+      <div className="print-header">
+        <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>SkyRoster Shift Schedule</h1>
+        <p style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
+          Generated on {new Date().toLocaleDateString()} · Total: {totalH.toFixed(1)} hrs · {workCount} scheduled shifts
+        </p>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+        <div>
+          <div className="sora" style={{ fontSize: 28, fontWeight: 900, color: t.text, letterSpacing: "-0.6px" }}>
+            Master Roster
+          </div>
+          <div style={{ fontSize: 13, color: t.sub, marginTop: 5 }}>
+            {workCount} shifts · {totalH.toFixed(1)} hours planned · ₹{estimatedEarnings.toLocaleString("en-IN")} estimated
+          </div>
         </div>
-        <div style={{ fontSize: 13, color: t.sub, marginTop: 5 }}>
-          {workCount} shifts · {totalH.toFixed(1)} hours planned
-        </div>
+        {roster.length > 0 && (
+          <button
+            onClick={() => window.print()}
+            className="no-print btn-hover"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "9px 16px",
+              borderRadius: 10,
+              border: `1px solid ${t.cardBdr}`,
+              background: t.card,
+              color: t.text,
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            🖨️ Print Roster
+          </button>
+        )}
       </div>
 
       {/* Generate */}
@@ -417,12 +457,38 @@ export default function RosterView({
 
                         {/* Shift Dropdown */}
                         <td style={{ padding: "10px 16px", whiteSpace: "nowrap" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const currentIdx = shifts.findIndex((s) => s.code === r.shift);
+                                const nextShift = shifts[(currentIdx + 1) % shifts.length];
+                                updateEntry(origIdx, "shift", nextShift.code);
+                              }}
+                              onContextMenu={(e) => {
+                                e.preventDefault();
+                                updateEntry(origIdx, "shift", "");
+                              }}
+                              title="Click to cycle next shift · Right-click to clear"
+                              style={{
+                                padding: "4px 6px",
+                                borderRadius: 6,
+                                border: `1px solid ${sh ? sh.color : t.inputBdr}`,
+                                background: sh ? `${sh.color}18` : "transparent",
+                                color: sh ? sh.color : t.sub,
+                                fontSize: 10,
+                                fontWeight: 800,
+                                cursor: "pointer",
+                                transition: "all .15s",
+                              }}
+                            >
+                              ↻
+                            </button>
                             {sh && (
                               <div
                                 style={{
                                   width: 3,
-                                  height: 32,
+                                  height: 30,
                                   borderRadius: 2,
                                   background: sh.color,
                                   flexShrink: 0,
@@ -584,6 +650,65 @@ export default function RosterView({
                 <span style={{ color: t.text, fontWeight: 700 }}>{totalH.toFixed(1)} hrs</span>
               </div>
             </div>
+          </div>
+
+          {/* Sticky Live Hours + Pay Footer */}
+          <div
+            className="no-print"
+            style={{
+              position: "sticky",
+              bottom: 16,
+              zIndex: 40,
+              background: t.card,
+              border: `1px solid ${t.cardBdr}`,
+              borderRadius: 16,
+              padding: "14px 20px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: 16,
+              boxShadow: "0 10px 30px rgba(0,0,0,0.12)",
+              backdropFilter: "blur(8px)",
+              marginTop: 14,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+              <div>
+                <span style={{ fontSize: 10, color: t.sub, textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.5 }}>Total Hours</span>
+                <div style={{ fontSize: 16, fontWeight: 800, color: t.text }} className="sora">{totalH.toFixed(1)} hrs</div>
+              </div>
+              <div style={{ width: 1, height: 28, background: t.tBdr }} />
+              <div>
+                <span style={{ fontSize: 10, color: t.sub, textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.5 }}>Est. Earnings</span>
+                <div style={{ fontSize: 16, fontWeight: 800, color: "#10B981" }} className="sora">₹{estimatedEarnings.toLocaleString("en-IN")}</div>
+              </div>
+              <div style={{ width: 1, height: 28, background: t.tBdr }} />
+              <div>
+                <span style={{ fontSize: 10, color: t.sub, textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.5 }}>Breakdown</span>
+                <div style={{ fontSize: 12, fontWeight: 600, color: t.text }}>
+                  {workCount} Work · {roster.filter(r => r.shift === "N").length} Night · {roster.filter(r => r.shift === "F" || !r.shift).length} Off
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => window.print()}
+              style={{
+                padding: "8px 16px",
+                borderRadius: 10,
+                background: t.is ? "rgba(37,99,235,0.2)" : "#EFF6FF",
+                color: "#2563EB",
+                border: "1px solid rgba(37,99,235,0.3)",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              🖨️ Print / Save PDF
+            </button>
           </div>
         </>
       )}

@@ -158,38 +158,60 @@ export default function ExportView({ t, roster, shifts, downloadICS }) {
                 {totalH.toFixed(1)} hours · {nightRows.length} overnight · {dates.length} unique dates
               </div>
             </div>
-            <button
-              onClick={handleExport}
-              disabled={!canExport || animating}
-              aria-label="Download ICS file"
-              className="btn-hover"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                padding: "14px 28px",
-                borderRadius: 14,
-                border: canExport ? "1px solid rgba(255,255,255,.3)" : "none",
-                cursor: canExport && !animating ? "pointer" : "not-allowed",
-                background: done ? "#059669" : canExport ? "rgba(255,255,255,.2)" : "#CBD5E1",
-                color: "#fff",
-                fontSize: 15,
-                fontWeight: 700,
-                fontFamily: "'DM Sans',sans-serif",
-                transition: "all .2s",
-                opacity: !canExport ? 0.45 : 1,
-              }}
-            >
-              {animating ? (
-                <>⏳ Generating…</>
-              ) : done ? (
-                <>✅ Downloaded!</>
-              ) : (
-                <>
-                  <Download size={18} /> Download .ics
-                </>
-              )}
-            </button>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button
+                onClick={() => window.print()}
+                className="btn-hover"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "14px 20px",
+                  borderRadius: 14,
+                  border: canExport ? "1px solid rgba(255,255,255,.3)" : "none",
+                  cursor: "pointer",
+                  background: "rgba(255,255,255,.15)",
+                  color: "#fff",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  fontFamily: "'DM Sans',sans-serif",
+                }}
+              >
+                🖨️ Print / Save PDF
+              </button>
+              <button
+                onClick={handleExport}
+                disabled={!canExport || animating}
+                aria-label="Download ICS file"
+                className="btn-hover"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "14px 28px",
+                  borderRadius: 14,
+                  border: canExport ? "1px solid rgba(255,255,255,.3)" : "none",
+                  cursor: canExport && !animating ? "pointer" : "not-allowed",
+                  background: done ? "#059669" : canExport ? "rgba(255,255,255,.2)" : "#CBD5E1",
+                  color: "#fff",
+                  fontSize: 15,
+                  fontWeight: 700,
+                  fontFamily: "'DM Sans',sans-serif",
+                  transition: "all .2s",
+                  opacity: !canExport ? 0.45 : 1,
+                }}
+              >
+                {animating ? (
+                  <>⏳ Generating…</>
+                ) : done ? (
+                  <>✅ Downloaded!</>
+                ) : (
+                  <>
+                    <Download size={18} /> Download .ics
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
 
