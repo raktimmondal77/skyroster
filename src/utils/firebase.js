@@ -3,12 +3,12 @@ import { getFirestore } from "firebase/firestore";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBM39BNJD7VxmDf42xpkmGJXvJTGHX9lVM",
-  authDomain: "smart-shift-roster.firebaseapp.com",
-  projectId: "smart-shift-roster",
-  storageBucket: "smart-shift-roster.firebasestorage.app",
-  messagingSenderId: "961671736074",
-  appId: "1:961671736074:web:3b8324084f19da541168f3"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 let app, db, auth, provider;
