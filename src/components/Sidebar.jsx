@@ -26,6 +26,11 @@ export default function Sidebar({ view, setView, dark, setDark, t, open, setOpen
           }}
         />
       )}
+      <style>{`
+        @media(min-width:768px) {
+          .sidebar-el { transform: translateX(0) !important; }
+        }
+      `}</style>
       <aside
         className="sidebar-el"
         style={{
@@ -40,6 +45,7 @@ export default function Sidebar({ view, setView, dark, setDark, t, open, setOpen
           flexDirection: "column",
           zIndex: 100,
           transform: open ? "translateX(0)" : "translateX(-100%)",
+          transition: "transform 0.3s ease",
         }}
       >
         <div style={{ padding: "22px 22px 18px", borderBottom: `1px solid ${t.sBdr}` }}>

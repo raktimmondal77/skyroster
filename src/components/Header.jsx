@@ -25,6 +25,14 @@ export default function Header({ t, roster, downloadICS, mobOpen, setMobOpen }) 
         justifyContent: "space-between",
       }}
     >
+      <style>{`
+        .mob-ham { display: flex; align-items: center; background: none; border: none; cursor: pointer; padding: 2px; }
+        .desk-only { display: none; }
+        @media(min-width:768px) {
+          .mob-ham { display: none; }
+          .desk-only { display: block; }
+        }
+      `}</style>
       <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
         <button
           className="mob-ham"
@@ -32,13 +40,7 @@ export default function Header({ t, roster, downloadICS, mobOpen, setMobOpen }) 
           aria-expanded={mobOpen}
           onClick={() => setMobOpen(!mobOpen)}
           style={{
-            display: "none",
-            alignItems: "center",
-            background: "none",
-            border: "none",
-            cursor: "pointer",
             color: t.sub,
-            padding: "2px",
           }}
         >
           <Menu size={22} />
