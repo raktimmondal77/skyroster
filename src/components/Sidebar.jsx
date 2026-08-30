@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { LayoutDashboard, Calendar, Clock, Download, Settings, Sun, Moon, Home, Heart, Users, ClipboardList } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -12,6 +13,16 @@ const NAV_ITEMS = [
 ];
 
 export default function Sidebar({ view, setView, dark, setDark, t, open, setOpen, setShowDonateModal }) {
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
   return (
     <>
       {open && (

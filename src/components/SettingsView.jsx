@@ -1,4 +1,7 @@
+import { useState } from "react";
 import { Trash2, RotateCcw, Info } from "lucide-react";
+import toast from "react-hot-toast";
+import ConfirmDialog from "./ConfirmDialog.jsx";
 
 const Row = ({ label, sub, right, t }) => (
   <div
@@ -19,14 +22,55 @@ const Row = ({ label, sub, right, t }) => (
 );
 
 export default function SettingsView({ t, dark, setDark, setRoster, setShifts, DEFAULT_SHIFTS, user, signInWithGoogle, logoutUser }) {
-  const clearRoster = () => {
-    if (!window.confirm("Clear all roster data?")) return;
-    setRoster([]);
+  const [dialogState, setDialogState] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    confirmLabel: "",
+    onConfirm: () => {},
+  });
+
+  const handleClearRoster = () => {
+    setDialogState({
+      isOpen: true,
+      title: "Clear all roster data?",
+      message: "This will permanently remove all your scheduled dates, shifts, and shift notes. This action cannot be undone.",
+      confirmLabel: "Delete Roster",
+      onConfirm: () => {
+        setRoster([]);
+        toast.success("Roster cleared successfully");
+      },
+    });
   };
 
-  const resetShifts = () => {
-    if (!window.confirm("Reset shifts to defaults?")) return;
-    setShifts(DEFAULT_SHIFTS);
+  const handleResetShifts = () => {
+    setDialogState({
+      isOpen: true,
+      title: "Reset shift templates?",
+      message: "This will restore the standard default shift types (Morning, Mid, Evening, Night, Off). Custom shift modifications will be reset.",
+      confirmLabel: "Reset Shifts",
+      onConfirm: () => {
+        setShifts(DEFAULT_SHIFTS);
+        toast.success("Shift templates restored to defaults");
+      },
+    });
+  };
+
+  const handleSignOut = () => {
+    setDialogState({
+      isOpen: true,
+      title: "Sign out of Google Backup?",
+      message: "Your current schedule will remain saved locally on this device.",
+      confirmLabel: "Sign Out",
+      onConfirm: async () => {
+        try {
+          await logoutUser();
+          toast.success("Signed out");
+        } catch {
+          toast.error("Failed to sign out");
+        }
+      },
+    });
   };
 
   return (
@@ -90,7 +134,7 @@ export default function SettingsView({ t, dark, setDark, setRoster, setShifts, D
           sub="Permanently delete all scheduled dates and notes"
           right={
             <button
-              onClick={clearRoster}
+              onClick={handleClearRoster}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -116,7 +160,7 @@ export default function SettingsView({ t, dark, setDark, setRoster, setShifts, D
           sub="Revert custom templates back to system presets"
           right={
             <button
-              onClick={resetShifts}
+              onClick={handleResetShifts}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -143,7 +187,7 @@ export default function SettingsView({ t, dark, setDark, setRoster, setShifts, D
           right={
             user ? (
               <button
-                onClick={logoutUser}
+                onClick={handleSignOut}
                 style={{
                   padding: "7px 16px",
                   borderRadius: 9,
@@ -159,7 +203,14 @@ export default function SettingsView({ t, dark, setDark, setRoster, setShifts, D
               </button>
             ) : (
               <button
-                onClick={signInWithGoogle}
+                onClick={async () => {
+                  try {
+                    await signInWithGoogle();
+                    toast.success("Signed in with Google");
+                  } catch (e) {
+                    toast.error(e?.message || "Sign in failed");
+                  }
+                }}
                 style={{
                   padding: "7px 16px",
                   borderRadius: 9,
@@ -211,7 +262,7 @@ export default function SettingsView({ t, dark, setDark, setRoster, setShifts, D
               style={{
                 padding: "4px 12px",
                 borderRadius: 20,
-                background: t.tag,
+                background: t.tag || "rgba(127,127,127,0.1)",
                 color: t.sub,
                 fontSize: 11,
                 fontWeight: 700,
@@ -222,6 +273,16 @@ export default function SettingsView({ t, dark, setDark, setRoster, setShifts, D
           ))}
         </div>
       </div>
+
+      <ConfirmDialog
+        t={t}
+        isOpen={dialogState.isOpen}
+        title={dialogState.title}
+        message={dialogState.message}
+        confirmLabel={dialogState.confirmLabel}
+        onConfirm={dialogState.onConfirm}
+        onClose={() => setDialogState((s) => ({ ...s, isOpen: false }))}
+      />
     </div>
   );
 }

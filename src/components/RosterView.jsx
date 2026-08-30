@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { AlertTriangle, Sparkles, Search } from "lucide-react";
 import { calcHrs, dayFull, checkConflicts, isON } from "../utils/rosterHelpers";
+import EmptyState from "./EmptyState.jsx";
 
 export default function RosterView({
   t,
@@ -255,22 +256,14 @@ export default function RosterView({
       )}
 
       {roster.length === 0 ? (
-        <div
-          style={{
-            background: t.card,
-            border: `2px dashed ${t.cardBdr}`,
-            borderRadius: 20,
-            padding: "80px 24px",
-            textAlign: "center",
-          }}
-        >
-          <div style={{ fontSize: 52, marginBottom: 16 }}>📅</div>
-          <div style={{ fontWeight: 700, color: t.text, fontSize: 18 }}>No roster generated yet</div>
-          <div style={{ color: t.sub, fontSize: 13, marginTop: 6, maxWidth: 500, marginInline: "auto" }}>
-            Select a date range above and click Generate. Then fill the first few days — the planner detects
-            your pattern and offers to auto-fill the rest.
-          </div>
-        </div>
+        <EmptyState
+          t={t}
+          icon="🗓️"
+          title="No roster generated yet"
+          subtitle="Select a start and end date above, then click Generate Roster to build your shift schedule."
+          actionLabel="Generate Roster"
+          onAction={generateRoster}
+        />
       ) : (
         <>
           {/* Filters and Search */}

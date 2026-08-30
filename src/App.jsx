@@ -14,6 +14,7 @@ import SuccessModal from "./components/SuccessModal.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import AuthSplash from "./components/AuthSplash.jsx";
 import TeamView from "./components/TeamView.jsx";
+import toast from "react-hot-toast";
 import { trackEvent } from "./utils/analytics.js";
 import { subscribeToTeam, syncMyRoster } from "./utils/teamSync.js";
 import { auth } from "./utils/firebase.js";
@@ -314,18 +315,29 @@ function MainApp() {
   }, [setShowDonateModal]);
 
   const triggerDownloadICS = useCallback(() => {
-    trackEvent("export_ics", { count: roster.filter((r) => r.shift).length });
-    const blob = new Blob([buildICS(roster, shifts)], { type: "text/calendar;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "smart-shift-roster.ics";
-    a.click();
-    URL.revokeObjectURL(url);
+    const assignedShifts = roster.filter((r) => r.shift && r.shift !== "F" && r.startTime);
+    if (assignedShifts.length === 0) {
+      toast.error("No active shifts to export. Schedule some shifts first!");
+      return;
+    }
 
-    setTimeout(() => {
-      setShowSuccessModal(true);
-    }, 800);
+    try {
+      trackEvent("export_ics", { count: assignedShifts.length });
+      const blob = new Blob([buildICS(roster, shifts)], { type: "text/calendar;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "smart-shift-roster.ics";
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Calendar exported successfully!");
+
+      setTimeout(() => {
+        setShowSuccessModal(true);
+      }, 800);
+    } catch {
+      toast.error("Calendar export failed — please try again.");
+    }
   }, [roster, shifts, setShowSuccessModal]);
 
   if (authLoading) return <AuthSplash dark={dark} />;

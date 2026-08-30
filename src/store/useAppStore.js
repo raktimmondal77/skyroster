@@ -17,13 +17,17 @@ export const DEFAULT_SHIFTS = [
   { code: "F",  title: "Off Day",       start: "",      end: "",      color: "#059669", isOff: true,  hourlyRate: 0   },
 ].map(makeShift);
 
+const prefersDark = () =>
+  typeof window !== "undefined" &&
+  Boolean(window.matchMedia?.("(prefers-color-scheme: dark)").matches);
+
 export const useAppStore = create(
   persist(
     (set, get) => ({
       // State
       roster: [],
       shifts: DEFAULT_SHIFTS,
-      dark: false,
+      dark: prefersDark(),
       mobOpen: false,
       startDate: "",
       endDate: "",

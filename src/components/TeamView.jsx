@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Users, Copy, CheckCircle, Plus, LogIn, Download } from "lucide-react";
+import toast from "react-hot-toast";
 import { createTeam, joinTeam } from "../utils/teamSync.js";
 import { buildTeamICS } from "../utils/rosterHelpers.js";
+import ConfirmDialog from "./ConfirmDialog.jsx";
 
 export default function TeamView({ t, roster, teamId, setTeamId, userName, setUserName, teamData }) {
   const [nameInput, setNameInput] = useState(userName);
@@ -9,32 +11,46 @@ export default function TeamView({ t, roster, teamId, setTeamId, userName, setUs
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
 
   const handleCreate = async () => {
-    if (!nameInput.trim()) return setError("Please enter your name");
+    if (!nameInput.trim()) {
+      toast.error("Please enter your name");
+      return setError("Please enter your name");
+    }
     setError("");
     setLoading(true);
     try {
       const newTeamId = await createTeam("My Team", nameInput.trim(), roster);
       setUserName(nameInput.trim());
       setTeamId(newTeamId);
+      toast.success(`Team created! Code: ${newTeamId}`);
     } catch (err) {
       setError(err.message);
+      toast.error(err.message || "Failed to create team");
     }
     setLoading(false);
   };
 
   const handleJoin = async () => {
-    if (!nameInput.trim()) return setError("Please enter your name");
-    if (!joinCode.trim()) return setError("Please enter a Team Code");
+    if (!nameInput.trim()) {
+      toast.error("Please enter your name");
+      return setError("Please enter your name");
+    }
+    if (!joinCode.trim()) {
+      toast.error("Please enter a Team Code");
+      return setError("Please enter a Team Code");
+    }
     setError("");
     setLoading(true);
     try {
       await joinTeam(joinCode.trim().toUpperCase(), nameInput.trim(), roster);
       setUserName(nameInput.trim());
       setTeamId(joinCode.trim().toUpperCase());
+      toast.success("Joined team successfully!");
     } catch (err) {
       setError(err.message);
+      toast.error(err.message || "Failed to join team");
     }
     setLoading(false);
   };
@@ -42,25 +58,33 @@ export default function TeamView({ t, roster, teamId, setTeamId, userName, setUs
   const copyCode = () => {
     navigator.clipboard.writeText(teamId);
     setCopied(true);
+    toast.success("Team code copied to clipboard!");
     setTimeout(() => setCopied(false), 2000);
   };
 
   const leaveTeam = () => {
     setTeamId("");
-    // Keep username
+    toast.success("Left team");
   };
 
   const handleExportTeam = () => {
-    if (!teamData || !teamData.members) return;
+    if (!teamData || !teamData.members) {
+      toast.error("No team members found to export");
+      return;
+    }
     const icsContent = buildTeamICS(teamData);
-    if (!icsContent) return;
+    if (!icsContent) {
+      toast.error("No active shifts to export");
+      return;
+    }
     const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `team-roster-${teamId}.ics`;
+    a.download = `team-${teamId}-roster.ics`;
     a.click();
     URL.revokeObjectURL(url);
+    toast.success("Team calendar exported!");
   };
 
   return (
@@ -169,7 +193,7 @@ export default function TeamView({ t, roster, teamId, setTeamId, userName, setUs
                 <Download size={16} /> Export Team ICS
               </button>
               <button
-                onClick={leaveTeam}
+                onClick={() => setShowLeaveDialog(true)}
                 style={{ flex: 1, padding: "12px", borderRadius: 12, background: "transparent", color: "#DC2626", border: "1px dashed #DC2626", fontSize: 13, fontWeight: 700, cursor: "pointer" }}
               >
                 Leave Team
@@ -178,6 +202,16 @@ export default function TeamView({ t, roster, teamId, setTeamId, userName, setUs
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        t={t}
+        isOpen={showLeaveDialog}
+        title="Leave this Team?"
+        message="You will disconnect from this team's roster sync. You can always rejoin later if you have the 6-character code."
+        confirmLabel="Leave Team"
+        onConfirm={leaveTeam}
+        onClose={() => setShowLeaveDialog(false)}
+      />
     </div>
   );
 }
