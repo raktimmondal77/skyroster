@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Sidebar from "./components/Sidebar.jsx";
 import Header from "./components/Header.jsx";
 import DashboardView from "./components/DashboardView.jsx";
@@ -10,6 +10,7 @@ import CalendarView from "./components/CalendarView.jsx";
 import LandingView from "./components/LandingView.jsx";
 import DonateModal from "./components/DonateModal.jsx";
 import SuccessModal from "./components/SuccessModal.jsx";
+import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import TeamView from "./components/TeamView.jsx";
 import { trackEvent } from "./utils/analytics.js";
 import { subscribeToTeam, syncMyRoster } from "./utils/teamSync.js";
@@ -146,9 +147,9 @@ export default function App() {
   const [rangeError, setRangeError] = useState("");
   const [shifts, setShifts] = useState(() => loadStore("ssrp_shifts", DEFAULT_SHIFTS));
   const [roster, setRoster] = useState(() => loadStore("ssrp_roster", []));
-  const [bmcUser, setBmcUser] = useState(() => loadStore("ssrp_bmc", ""));
-  const [paypalUser, setPaypalUser] = useState(() => loadStore("ssrp_paypal", "https://www.paypal.com/ncp/payment/8CHC5VF72GMEU"));
-  const [upiId, setUpiId] = useState(() => loadStore("ssrp_upi", "9883059530@upi"));
+  const [bmcUser, setBmcUser] = useState(() => loadStore("ssrp_bmc", import.meta.env.VITE_DEFAULT_BMC || ""));
+  const [paypalUser, setPaypalUser] = useState(() => loadStore("ssrp_paypal", import.meta.env.VITE_DEFAULT_PAYPAL || ""));
+  const [upiId, setUpiId] = useState(() => loadStore("ssrp_upi", import.meta.env.VITE_DEFAULT_UPI || ""));
   const [showDonateModal, setShowDonateModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [teamId, setTeamId] = useState(() => loadStore("ssrp_team_id", ""));
@@ -158,7 +159,7 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
-    if (!auth) { setAuthLoading(false); return; }
+    if (!auth) { setTimeout(() => setAuthLoading(false), 0); return; }
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
@@ -189,15 +190,23 @@ export default function App() {
     }
   }, [teamId]);
 
+  const syncTimerRef = useRef(null);
+
   useEffect(() => {
-    // Sync to Team
-    if (teamId && userName && roster.length > 0) {
-      syncMyRoster(teamId, userName, roster);
-    }
-    // Sync to Cloud
-    if (user && roster.length > 0) {
-      saveRosterToCloud(user.uid, roster);
-    }
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+
+    syncTimerRef.current = setTimeout(() => {
+      if (teamId && userName && roster.length > 0) {
+        syncMyRoster(teamId, userName, roster);
+      }
+      if (user && roster.length > 0) {
+        saveRosterToCloud(user.uid, roster);
+      }
+    }, 800);
+
+    return () => {
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    };
   }, [roster, teamId, userName, user]);
 
   useEffect(() => {
@@ -437,7 +446,11 @@ export default function App() {
           mobOpen={mobOpen}
           setMobOpen={setMobOpen}
         />
-        <main style={{ flex: 1, padding: "28px 32px", overflowY: "auto" }}>{VIEWS[view]}</main>
+        <main style={{ flex: 1, padding: "28px 32px", overflowY: "auto", position: "relative" }}>
+          <ErrorBoundary key={view}>
+            {VIEWS[view]}
+          </ErrorBoundary>
+        </main>
       </div>
       <DonateModal
         t={t}
