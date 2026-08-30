@@ -1,13 +1,95 @@
-/* Minimal Global Stylesheet for Smart Shift Planner */
+/* SkyRoster Global Design System & CSS Variables */
 *, *::before, *::after {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #EEF2FB;
+  --sidebar: #FFFFFF;
+  --sBdr: #E6ECF6;
+  --card: #FFFFFF;
+  --cardBdr: #E8EDF7;
+  --cardHov: #F6F9FF;
+  --text: #0A1628;
+  --sub: #5A6E92;
+  --inputBg: #FFFFFF;
+  --inputBdr: #D0D9EA;
+  --inputTxt: #0A1628;
+  --tHead: #F4F7FF;
+  --tBdr: #E6ECF6;
+  --accent: #2563EB;
+}
+
+[data-dark] {
+  --bg: #070D1A;
+  --sidebar: #0C1322;
+  --sBdr: #1C2740;
+  --card: #0D1526;
+  --cardBdr: #1C2740;
+  --cardHov: #121C32;
+  --text: #EAF0FF;
+  --sub: #7488AE;
+  --inputBg: #060C18;
+  --inputBdr: #26314F;
+  --inputTxt: #EAF0FF;
+  --tHead: #060C18;
+  --tBdr: #1C2740;
+  --accent: #3B82F6;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  margin: 0;
-  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', system-ui, sans-serif;
   overflow-x: hidden;
+  transition: background .25s ease;
 }
+
+.mono { font-family: 'JetBrains Mono', monospace; }
+.sora { font-family: 'Sora', sans-serif; }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 99px; }
+[data-dark] ::-webkit-scrollbar-thumb { background: #334155; }
+
+input[type=date]::-webkit-calendar-picker-indicator,
+input[type=time]::-webkit-calendar-picker-indicator {
+  opacity: .5;
+  cursor: pointer;
+}
+
+@keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes scaleIn { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
+@keyframes slideR { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+@keyframes glow { 0%, 100% { box-shadow: 0 0 0 0 rgba(37,99,235,.4); } 50% { box-shadow: 0 0 0 6px rgba(37,99,235,0); } }
+
+.anim-fade-up { animation: fadeUp .4s cubic-bezier(.22,.68,0,1.2) forwards; }
+.anim-scale { animation: scaleIn .25s cubic-bezier(.22,.68,0,1.2) forwards; }
+.anim-slide-r { animation: slideR .3s ease forwards; }
+
+.nav-item { transition: all .2s ease; }
+.nav-item:hover { transform: translateX(3px); }
+
+.card-lift { transition: transform .25s cubic-bezier(.22,.68,0,1.2), box-shadow .25s ease; }
+.card-lift:hover { transform: translateY(-4px); }
+
+.row-hover { transition: background .15s; }
+.row-hover:hover { background: rgba(37,99,235,.035) !important; }
+[data-dark] .row-hover:hover { background: rgba(255,255,255,.04) !important; }
 
 #root {
   min-height: 100vh;
