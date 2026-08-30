@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
+import { LayoutDashboard, ClipboardList, Calendar as CalendarIcon, Users, Settings as SettingsIcon } from "lucide-react";
 import Sidebar from "./components/Sidebar.jsx";
 import Header from "./components/Header.jsx";
 import DashboardView from "./components/DashboardView.jsx";
@@ -243,6 +244,68 @@ function AppLayout({ t, downloadICS, onOpenDonate }) {
           </ErrorBoundary>
         </main>
       </div>
+
+      {/* Mobile Bottom Tab Bar */}
+      <nav
+        className="mobile-bottom-nav"
+        style={{
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: 60,
+          background: t.card,
+          borderTop: `1px solid ${t.cardBdr}`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-around",
+          zIndex: 80,
+          backdropFilter: "blur(10px)",
+        }}
+      >
+        <style>{`
+          @media(min-width: 768px) {
+            .mobile-bottom-nav { display: none !important; }
+          }
+          @media(max-width: 767px) {
+            main { padding-bottom: 80px !important; }
+          }
+        `}</style>
+        {[
+          { id: "dashboard", label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
+          { id: "roster", label: "Roster", path: "/roster", icon: ClipboardList },
+          { id: "calendar", label: "Calendar", path: "/calendar", icon: CalendarIcon },
+          { id: "team", label: "Team", path: "/team", icon: Users },
+          { id: "settings", label: "Settings", path: "/settings", icon: SettingsIcon },
+        ].map((tab) => {
+          const Icon = tab.icon;
+          const active = location.pathname === tab.path;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => navigate(tab.path)}
+              style={{
+                background: "none",
+                border: "none",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 3,
+                color: active ? "#2563EB" : t.sub,
+                cursor: "pointer",
+                padding: "6px 12px",
+                fontFamily: "'DM Sans', sans-serif",
+                fontSize: 10,
+                fontWeight: active ? 800 : 500,
+              }}
+            >
+              <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+
       {modals}
     </div>
   );

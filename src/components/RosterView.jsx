@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
-import { AlertTriangle, Sparkles, Search } from "lucide-react";
+import { AlertTriangle, Sparkles, Search, Layers } from "lucide-react";
 import { calcHrs, dayFull, checkConflicts, isON } from "../utils/rosterHelpers";
 import EmptyState from "./EmptyState.jsx";
+import toast from "react-hot-toast";
 
 export default function RosterView({
   t,
@@ -197,6 +198,47 @@ export default function RosterView({
             ⚠ {rangeError}
           </div>
         )}
+
+        {/* Preset Templates */}
+        <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${t.tBdr}` }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: t.sub, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+            <Layers size={13} color="#2563EB" />
+            <span>Shift Rotation Presets:</span>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {[
+              { name: "5-Day Workweek", pattern: ["M1", "M1", "M1", "M1", "M1", "F", "F"] },
+              { name: "Rotating 3-Shift", pattern: ["M1", "M1", "E", "E", "N", "N", "F"] },
+              { name: "4-on / 4-off", pattern: ["M1", "M1", "M1", "M1", "F", "F", "F", "F"] },
+              { name: "Night Owl (4N/3Off)", pattern: ["N", "N", "N", "N", "F", "F", "F"] },
+              { name: "2-2-3 Pitman", pattern: ["M1", "M1", "F", "F", "N", "N", "N", "F", "F", "M1", "M1", "M1", "F", "F"] },
+            ].map((preset) => (
+              <button
+                key={preset.name}
+                type="button"
+                onClick={() => {
+                  applyDetectedPattern(preset.pattern);
+                  toast.success(`Applied ${preset.name} rotation!`);
+                }}
+                disabled={roster.length === 0}
+                style={{
+                  padding: "5px 12px",
+                  borderRadius: 8,
+                  border: `1px solid ${t.cardBdr}`,
+                  background: t.is ? "rgba(255,255,255,0.04)" : "#F8FAFC",
+                  color: roster.length > 0 ? t.text : t.sub,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: roster.length > 0 ? "pointer" : "not-allowed",
+                  opacity: roster.length > 0 ? 1 : 0.5,
+                  transition: "all .15s",
+                }}
+              >
+                + {preset.name}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* PATTERN BANNER */}

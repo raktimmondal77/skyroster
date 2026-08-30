@@ -9,11 +9,11 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'Smart Shift Planner',
-        short_name: 'ShiftPlanner',
-        description: 'Plan and sync your shifts easily',
+        name: 'SkyRoster — Smart Shift Planner',
+        short_name: 'SkyRoster',
+        description: 'Plan, visualize, and export shift rosters with team collaboration',
         theme_color: '#2563EB',
-        background_color: '#EEF2FB',
+        background_color: '#070D1A',
         display: 'standalone',
         icons: [
           {
@@ -26,4 +26,18 @@ export default defineConfig({
       }
     })
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('firebase')) return 'vendor-firebase';
+            if (id.includes('recharts')) return 'vendor-charts';
+            if (id.includes('lucide-react') || id.includes('framer-motion') || id.includes('react-hot-toast')) return 'vendor-ui';
+            return 'vendor-libs';
+          }
+        }
+      }
+    }
+  }
 })
