@@ -314,6 +314,13 @@ function MainApp() {
     setShowDonateModal(true);
   }, [setShowDonateModal]);
 
+  // Skip landing page if local roster exists
+  useEffect(() => {
+    if (!authLoading && roster.length > 0 && location.pathname === "/") {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [roster, location.pathname, navigate, authLoading]);
+
   const triggerDownloadICS = useCallback(() => {
     const assignedShifts = roster.filter((r) => r.shift && r.shift !== "F" && r.startTime);
     if (assignedShifts.length === 0) {
