@@ -413,6 +413,7 @@ function MainApp() {
         }
         setSyncStatus("saved");
       } catch (error) {
+        console.error("Cloud sync failed:", error);
         setSyncStatus("error");
       }
     }, 800);
