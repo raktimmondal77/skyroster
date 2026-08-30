@@ -162,6 +162,7 @@ function AppLayout({ t, downloadICS, onOpenDonate }) {
           mobOpen={mobOpen}
           setMobOpen={setMobOpen}
           onOpenShortcuts={() => setShowShortcuts(true)}
+          syncStatus={useAppStore(s => s.syncStatus)}
         />
         <main style={{ flex: 1, padding: "28px 32px", overflowY: "auto", position: "relative" }}>
           <ErrorBoundary key={location.pathname}>
@@ -339,6 +340,7 @@ function MainApp() {
     showSuccessModal,
     hasSeenWelcome,
     completeWelcome,
+    setSyncStatus,
   } = useAppStore();
 
   const t = useMemo(() => T(dark), [dark]);
@@ -384,21 +386,41 @@ function MainApp() {
   // Debounced Cloud & Team Sync
   const syncTimerRef = useRef(null);
   useEffect(() => {
+    // Immediate feedback: something changed, we are unsaved
+    if (roster.length > 0) setSyncStatus("unsaved");
+
     if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
 
-    syncTimerRef.current = setTimeout(() => {
-      if (teamId && userName && roster.length > 0) {
-        syncMyRoster(teamId, userName, roster);
+    syncTimerRef.current = setTimeout(async () => {
+      // If offline / no cloud sync configured, just mark saved locally
+      if (!user && !teamId) {
+        setSyncStatus("saved");
+        return;
       }
-      if (user && roster.length > 0) {
-        saveRosterToCloud(user.uid, roster);
+
+      setSyncStatus("syncing");
+      try {
+        const promises = [];
+        if (teamId && userName && roster.length > 0) {
+          promises.push(syncMyRoster(teamId, userName, roster));
+        }
+        if (user && roster.length > 0) {
+          promises.push(saveRosterToCloud(user.uid, roster));
+        }
+        
+        if (promises.length > 0) {
+          await Promise.all(promises);
+        }
+        setSyncStatus("saved");
+      } catch (error) {
+        setSyncStatus("error");
       }
     }, 800);
 
     return () => {
       if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
     };
-  }, [roster, teamId, userName, user]);
+  }, [roster, teamId, userName, user, setSyncStatus]);
 
   useEffect(() => {
     trackEvent("page_view");

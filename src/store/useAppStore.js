@@ -40,6 +40,7 @@ export const useAppStore = create(
       showDonateModal: false,
       showSuccessModal: false,
       hasSeenWelcome: false,
+      syncStatus: "saved", // 'saved' | 'unsaved' | 'syncing' | 'error'
 
       // Env vars defaults
       bmcUser: import.meta.env.VITE_DEFAULT_BMC || "",
@@ -63,6 +64,7 @@ export const useAppStore = create(
       setShowDonateModal: (showDonateModal) => set({ showDonateModal }),
       setShowSuccessModal: (showSuccessModal) => set({ showSuccessModal }),
       completeWelcome: () => set({ hasSeenWelcome: true }),
+      setSyncStatus: (syncStatus) => set({ syncStatus }),
 
       restoreData: (parsedData) => {
         const { roster, shifts, teamId, userName, dark } = parsedData;

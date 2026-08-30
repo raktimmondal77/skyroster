@@ -489,13 +489,13 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
                   </div>
                 )}
                 
-                {/* Save & Dismiss Actions */}
+                {/* Dismiss Actions */}
                 <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
                   <button
                     onClick={() => setSelectedDateStr(null)}
                     style={{ flex: 1, padding: "11px", borderRadius: 12, background: "#2563EB", color: "#fff", border: "none", fontSize: 13, fontWeight: 700, cursor: "pointer" }}
                   >
-                    Save & Close
+                    Done
                   </button>
                 </div>
 

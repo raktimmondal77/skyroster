@@ -1,6 +1,6 @@
-import { Menu, Calendar } from "lucide-react";
+import { Menu, Calendar, Cloud, Loader2, CloudAlert, CloudCog } from "lucide-react";
 
-export default function Header({ t, roster, downloadICS, mobOpen, setMobOpen, onOpenShortcuts }) {
+export default function Header({ t, roster, downloadICS, mobOpen, setMobOpen, onOpenShortcuts, syncStatus }) {
   const today = new Date().toLocaleDateString("en-IN", {
     weekday: "long",
     day: "numeric",
@@ -56,6 +56,41 @@ export default function Header({ t, roster, downloadICS, mobOpen, setMobOpen, on
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        {/* Sync Indicator */}
+        <div
+          title={
+            syncStatus === "saved" ? "Saved to cloud" :
+            syncStatus === "syncing" ? "Saving..." :
+            syncStatus === "error" ? "Cloud save failed" : "Unsaved changes"
+          }
+          className="desk-only"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "6px 10px",
+            borderRadius: 10,
+            fontSize: 12,
+            fontWeight: 600,
+            color: syncStatus === "saved" ? "#059669" : syncStatus === "error" ? "#EF4444" : t.sub,
+            background: syncStatus === "saved" ? "rgba(5,150,105,0.1)" : syncStatus === "error" ? "rgba(239,68,68,0.1)" : "transparent",
+            transition: "all 0.3s"
+          }}
+        >
+          {syncStatus === "syncing" ? (
+            <Loader2 size={14} className="spin" style={{ color: "#2563EB" }} />
+          ) : syncStatus === "saved" ? (
+            <Cloud size={14} />
+          ) : syncStatus === "error" ? (
+            <CloudAlert size={14} />
+          ) : (
+            <CloudCog size={14} />
+          )}
+          <span>
+            {syncStatus === "syncing" ? "Saving..." : syncStatus === "saved" ? "Saved" : syncStatus === "error" ? "Error" : "Syncing..."}
+          </span>
+        </div>
+
         <button
           onClick={onOpenShortcuts}
           title="Keyboard shortcuts (?)"
