@@ -1,6 +1,6 @@
 import { Menu, Calendar } from "lucide-react";
 
-export default function Header({ t, roster, downloadICS, mobOpen, setMobOpen }) {
+export default function Header({ t, roster, downloadICS, mobOpen, setMobOpen, onOpenShortcuts }) {
   const today = new Date().toLocaleDateString("en-IN", {
     weekday: "long",
     day: "numeric",
@@ -55,31 +55,55 @@ export default function Header({ t, roster, downloadICS, mobOpen, setMobOpen }) 
           <div style={{ fontSize: 12, color: t.sub, fontWeight: 500, marginTop: 1 }}>{today}</div>
         </div>
       </div>
-      <button
-        disabled={!canExport}
-        aria-label="Export calendar as ICS"
-        onClick={downloadICS}
-        className="btn-hover"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          padding: "10px 22px",
-          borderRadius: 11,
-          border: "none",
-          cursor: canExport ? "pointer" : "not-allowed",
-          background: canExport ? "linear-gradient(135deg,#2563EB,#7C3AED)" : "#CBD5E1",
-          color: "#fff",
-          fontSize: 13,
-          fontWeight: 700,
-          fontFamily: "'DM Sans',sans-serif",
-          boxShadow: canExport ? "0 4px 14px rgba(37,99,235,.35)" : "none",
-          opacity: canExport ? 1 : 0.6,
-        }}
-      >
-        <Calendar size={16} />
-        Export .ics
-      </button>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <button
+          onClick={onOpenShortcuts}
+          title="Keyboard shortcuts (?)"
+          className="desk-only btn-hover"
+          style={{
+            padding: "8px 12px",
+            borderRadius: 10,
+            border: `1px solid ${t.cardBdr}`,
+            background: t.card,
+            color: t.sub,
+            cursor: "pointer",
+            fontSize: 12,
+            fontWeight: 700,
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <span className="mono" style={{ fontSize: 13, color: "#2563EB" }}>⌨</span>
+          <span>Shortcuts</span>
+        </button>
+
+        <button
+          disabled={!canExport}
+          aria-label="Export calendar as ICS"
+          onClick={downloadICS}
+          className="btn-hover"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "10px 20px",
+            borderRadius: 11,
+            border: "none",
+            cursor: canExport ? "pointer" : "not-allowed",
+            background: canExport ? "linear-gradient(135deg,#2563EB,#7C3AED)" : "#CBD5E1",
+            color: "#fff",
+            fontSize: 13,
+            fontWeight: 700,
+            fontFamily: "'DM Sans',sans-serif",
+            boxShadow: canExport ? "0 4px 14px rgba(37,99,235,.35)" : "none",
+            opacity: canExport ? 1 : 0.6,
+          }}
+        >
+          <Calendar size={16} />
+          Export .ics
+        </button>
+      </div>
     </header>
   );
 }

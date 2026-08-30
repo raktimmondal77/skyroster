@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { Clock, Calendar, CheckSquare, Award, AlertTriangle, DollarSign } from "lucide-react";
+import { Clock, Calendar, CheckSquare, Award, AlertTriangle, DollarSign, TrendingUp } from "lucide-react";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
 import { calcHrs, calcEarnings, checkConflicts, dayShort, fmtDayFull, isON, todayStr } from "../utils/rosterHelpers";
 
 export default function DashboardView({ t, roster, shifts, setView }) {
@@ -53,6 +54,18 @@ export default function DashboardView({ t, roster, shifts, setView }) {
     const max = Math.max(...b.map((s) => s.count), 1);
     return { b, max };
   }, [shifts, roster]);
+
+  const chartData = useMemo(() => {
+    if (roster.length === 0) return [];
+    const chunks = [];
+    for (let i = 0; i < roster.length; i += 7) {
+      const slice = roster.slice(i, i + 7);
+      const hours = slice.reduce((sum, r) => sum + (r.shift && r.shift !== "F" ? calcHrs(r.startTime, r.endTime) : 0), 0);
+      const weekLabel = slice[0]?.date ? `${slice[0].date.slice(5)}` : `W${Math.floor(i / 7) + 1}`;
+      chunks.push({ name: weekLabel, hours: Number(hours.toFixed(1)) });
+    }
+    return chunks.slice(0, 8);
+  }, [roster]);
 
   const stats = [
     { label: "Scheduled Shifts", val: work.length, icon: CheckSquare, clr: "#2563EB", bg: t.is ? "rgba(37,99,235,.15)" : "#EFF6FF" },
@@ -422,6 +435,49 @@ export default function DashboardView({ t, roster, shifts, setView }) {
             })}
           </div>
         </div>
+
+        {/* Weekly Hours Trend Chart */}
+        {chartData.length > 0 && (
+          <div style={{ ...card, gridColumn: "span 12", padding: "24px 26px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, flexWrap: "wrap", gap: 10 }}>
+              <div>
+                <div className="sora" style={{ fontSize: 16, fontWeight: 800, color: t.text, display: "flex", alignItems: "center", gap: 8 }}>
+                  <TrendingUp size={18} color="#2563EB" /> Weekly Hours Trend
+                </div>
+                <div style={{ fontSize: 12, color: t.sub, marginTop: 3 }}>
+                  Weekly hours worked across your planned schedule
+                </div>
+              </div>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#2563EB", background: t.is ? "rgba(37,99,235,0.18)" : "#EFF6FF", padding: "4px 12px", borderRadius: 8 }}>
+                Average: {(totalH / Math.max(chartData.length, 1)).toFixed(1)} hrs/wk
+              </span>
+            </div>
+
+            <div style={{ width: "100%", height: 190 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <XAxis dataKey="name" stroke={t.sub} fontSize={11} tickLine={false} />
+                  <YAxis stroke={t.sub} fontSize={11} tickLine={false} />
+                  <Tooltip
+                    contentStyle={{
+                      background: t.is ? "#0D1526" : "#FFFFFF",
+                      border: `1px solid ${t.cardBdr}`,
+                      borderRadius: 10,
+                      color: t.text,
+                      fontSize: 12,
+                      fontFamily: "'DM Sans', sans-serif",
+                    }}
+                  />
+                  <Bar dataKey="hours" fill="#2563EB" radius={[6, 6, 0, 0]}>
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={index % 2 === 0 ? "#2563EB" : "#7C3AED"} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
 
         {/* Timeline */}
         <div style={{ ...card, gridColumn: "span 7", padding: "24px 26px", minWidth: 0 }}>

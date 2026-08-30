@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import Sidebar from "./components/Sidebar.jsx";
 import Header from "./components/Header.jsx";
@@ -14,6 +14,8 @@ import SuccessModal from "./components/SuccessModal.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import AuthSplash from "./components/AuthSplash.jsx";
 import TeamView from "./components/TeamView.jsx";
+import ShortcutsModal from "./components/ShortcutsModal.jsx";
+import { useHotkeys } from "react-hotkeys-hook";
 import toast from "react-hot-toast";
 import { trackEvent } from "./utils/analytics.js";
 import { subscribeToTeam, syncMyRoster } from "./utils/teamSync.js";
@@ -47,6 +49,7 @@ const T = (d) => ({
 function AppLayout({ t, downloadICS, onOpenDonate }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   const {
     dark,
@@ -81,6 +84,18 @@ function AppLayout({ t, downloadICS, onOpenDonate }) {
     upiId,
   } = useAppStore();
 
+  // Navigation Hotkeys
+  useHotkeys("g+d", () => navigate("/dashboard"));
+  useHotkeys("g+r", () => navigate("/roster"));
+  useHotkeys("g+c", () => navigate("/calendar"));
+  useHotkeys("g+t", () => navigate("/team"));
+  useHotkeys("g+s", () => navigate("/shifts"));
+  useHotkeys("g+e", () => navigate("/export"));
+  useHotkeys("g+,", () => navigate("/settings"));
+  useHotkeys("d", () => setDark(!dark));
+  useHotkeys("shift+?", () => setShowShortcuts(true));
+  useHotkeys("?", () => setShowShortcuts(true));
+
   const currentView = location.pathname.replace("/", "") || "dashboard";
 
   const handleSetView = (viewId) => {
@@ -103,6 +118,11 @@ function AppLayout({ t, downloadICS, onOpenDonate }) {
         isOpen={showSuccessModal}
         onClose={() => setShowSuccessModal(false)}
         onOpenDonate={onOpenDonate}
+      />
+      <ShortcutsModal
+        t={t}
+        isOpen={showShortcuts}
+        onClose={() => setShowShortcuts(false)}
       />
     </>
   );
@@ -139,6 +159,7 @@ function AppLayout({ t, downloadICS, onOpenDonate }) {
           downloadICS={downloadICS}
           mobOpen={mobOpen}
           setMobOpen={setMobOpen}
+          onOpenShortcuts={() => setShowShortcuts(true)}
         />
         <main style={{ flex: 1, padding: "28px 32px", overflowY: "auto", position: "relative" }}>
           <ErrorBoundary key={location.pathname}>
