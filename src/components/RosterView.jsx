@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { AlertTriangle, Sparkles, Search, Clock, Info } from "lucide-react";
+import { AlertTriangle, Sparkles, Search } from "lucide-react";
 import { calcHrs, dayFull, checkConflicts, isON } from "../utils/rosterHelpers";
 
 export default function RosterView({

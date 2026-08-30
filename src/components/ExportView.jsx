@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Download, Calendar, Award, Clock, ArrowRight, BookOpen } from "lucide-react";
+import { Download, Calendar, Award, Clock, BookOpen } from "lucide-react";
 import { calcHrs } from "../utils/rosterHelpers";
 
 export default function ExportView({ t, roster, shifts, downloadICS }) {

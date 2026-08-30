@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Edit3, Trash2, DollarSign, Clock } from "lucide-react";
+import { Plus, Clock } from "lucide-react";
 import { isON } from "../utils/rosterHelpers";
 
 export default function ShiftsView({ t, shifts, setShifts }) {

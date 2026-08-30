@@ -1,4 +1,4 @@
-import { Sun, Moon, Trash2, RotateCcw, Info } from "lucide-react";
+import { Trash2, RotateCcw, Info } from "lucide-react";
 
 const Row = ({ label, sub, right, t }) => (
   <div

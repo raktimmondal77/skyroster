@@ -1,4 +1,4 @@
-import { LayoutDashboard, Calendar, Clock, Download, Settings, Sun, Moon, Home, SlidersHorizontal, Heart, Users, ClipboardList } from "lucide-react";
+import { LayoutDashboard, Calendar, Clock, Download, Settings, Sun, Moon, Home, Heart, Users, ClipboardList } from "lucide-react";
 
 const NAV_ITEMS = [
   { id: "landing",   label: "Welcome Home", icon: Home },

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sparkles, Calendar, DollarSign, Clock, ArrowRight, ShieldAlert, Award, ChevronRight, Moon, Sun, Heart } from "lucide-react";
+import { Sparkles, Calendar, DollarSign, ShieldAlert, Award, Moon, Sun, Heart } from "lucide-react";
 import { trackEvent } from "../utils/analytics.js";
 
 export default function LandingView({ t, setView, dark, setDark, setShowDonateModal }) {
