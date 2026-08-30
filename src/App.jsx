@@ -11,6 +11,7 @@ import LandingView from "./components/LandingView.jsx";
 import DonateModal from "./components/DonateModal.jsx";
 import SuccessModal from "./components/SuccessModal.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
+import AuthSplash from "./components/AuthSplash.jsx";
 import TeamView from "./components/TeamView.jsx";
 import { trackEvent } from "./utils/analytics.js";
 import { subscribeToTeam, syncMyRoster } from "./utils/teamSync.js";
@@ -30,7 +31,6 @@ import {
 /* ────────── GLOBAL STYLES ────────── */
 const GlobalStyle = () => (
   <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Sora:wght@600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     html{scroll-behavior:smooth}
     body{font-family:'DM Sans',system-ui,sans-serif}
@@ -72,14 +72,20 @@ const GlobalStyle = () => (
   `}</style>
 );
 
+const uid = () =>
+  (globalThis.crypto?.randomUUID?.() ??
+    `id-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`);
+
+const makeShift = (s) => ({ ...s, id: uid() });
+
 /* ────────── DEFAULT TEMPLATE SHIFTS ────────── */
 const DEFAULT_SHIFTS = [
-  { id: "s1", code: "M1", title: "Morning Shift", start: "06:00", end: "14:30", color: "#2563EB", isOff: false, hourlyRate: 200 },
-  { id: "s2", code: "M2", title: "Mid Shift",     start: "09:00", end: "17:30", color: "#7C3AED", isOff: false, hourlyRate: 200 },
-  { id: "s3", code: "E",  title: "Evening Shift", start: "14:00", end: "22:30", color: "#D97706", isOff: false, hourlyRate: 220 },
-  { id: "s4", code: "N",  title: "Night Shift",   start: "20:30", end: "05:00", color: "#DC2626", isOff: false, hourlyRate: 250 },
-  { id: "s5", code: "F",  title: "Off Day",       start: "",      end: "",      color: "#059669", isOff: true,  hourlyRate: 0   },
-];
+  { code: "M1", title: "Morning Shift", start: "06:00", end: "14:30", color: "#2563EB", isOff: false, hourlyRate: 200 },
+  { code: "M2", title: "Mid Shift",     start: "09:00", end: "17:30", color: "#7C3AED", isOff: false, hourlyRate: 200 },
+  { code: "E",  title: "Evening Shift", start: "14:00", end: "22:30", color: "#D97706", isOff: false, hourlyRate: 220 },
+  { code: "N",  title: "Night Shift",   start: "20:30", end: "05:00", color: "#DC2626", isOff: false, hourlyRate: 250 },
+  { code: "F",  title: "Off Day",       start: "",      end: "",      color: "#059669", isOff: true,  hourlyRate: 0   },
+].map(makeShift);
 
 const STORE_VERSION = 4; // Upgraded version for rate additions and calendar support
 
@@ -167,7 +173,7 @@ export default function App() {
         const cloudRoster = await loadRosterFromCloud(currentUser.uid);
         if (cloudRoster && cloudRoster.length > 0) {
           setRoster(cloudRoster);
-          setView("dashboard");
+          setView((v) => (v === "landing" ? "dashboard" : v));
         }
       }
       setAuthLoading(false);
@@ -183,11 +189,11 @@ export default function App() {
   }, [userName]);
 
   useEffect(() => {
-    if (teamId) {
-      return subscribeToTeam(teamId, setTeamData);
-    } else {
-      setTimeout(() => setTeamData(null), 0);
+    if (!teamId) {
+      setTeamData(null);
+      return;
     }
+    return subscribeToTeam(teamId, setTeamData);
   }, [teamId]);
 
   const syncTimerRef = useRef(null);
@@ -289,13 +295,28 @@ export default function App() {
     [shifts]
   );
 
-  // Apply detected cycle to all empty days (non-destructive)
+  const detectPattern = useCallback(() => {
+    const assigned = roster.filter((r) => r.shift);
+    if (assigned.length < 3) return null;
+    const codes = roster.map((r) => r.shift || null);
+    for (let len = 2; len <= Math.min(8, Math.floor(codes.length / 2)); len++) {
+      for (let s = 0; s <= codes.length - len * 2; s++) {
+        const p1 = codes.slice(s, s + len);
+        const p2 = codes.slice(s + len, s + len * 2);
+        if (p1.every(Boolean) && p1.every((v, idx) => v === p2[idx])) {
+          return p1;
+        }
+      }
+    }
+    return null;
+  }, [roster]);
+
   const applyDetectedPattern = useCallback(
     (cycle) => {
       if (!cycle || !cycle.length) return;
       setRoster((prev) => {
-        const firstIdx = prev.findIndex((r) => r.shift);
-        if (firstIdx < 0) return prev;
+        const firstIdx = prev.findIndex((r) => !r.shift);
+        if (firstIdx === -1) return prev;
         return prev.map((r, i) => {
           if (r.shift || i < firstIdx) return r;
           const code = cycle[(i - firstIdx) % cycle.length];
@@ -314,7 +335,7 @@ export default function App() {
     [shifts]
   );
 
-  const triggerDownloadICS = () => {
+  const triggerDownloadICS = useCallback(() => {
     trackEvent("export_ics", { count: roster.filter((r) => r.shift).length });
     const blob = new Blob([buildICS(roster, shifts)], { type: "text/calendar;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -328,9 +349,9 @@ export default function App() {
     setTimeout(() => {
       setShowSuccessModal(true);
     }, 800);
-  };
+  }, [roster, shifts]);
 
-  const VIEWS = {
+  const VIEWS = useMemo(() => ({
     landing: (
       <LandingView
         t={t}
@@ -374,7 +395,28 @@ export default function App() {
         logoutUser={logoutUser}
       />
     ),
-  };
+  }), [t, dark, roster, shifts, startDate, endDate, teamId, userName, teamData, user, rangeError, handleOpenDonateModal, generateRoster, updateEntry, applyDetectedPattern, detectPattern, triggerDownloadICS]);
+
+  if (authLoading) return <AuthSplash dark={dark} />;
+
+  const modals = (
+    <>
+      <DonateModal
+        t={t}
+        isOpen={showDonateModal}
+        onClose={() => setShowDonateModal(false)}
+        bmcUser={bmcUser}
+        paypalUser={paypalUser}
+        upiId={upiId}
+      />
+      <SuccessModal
+        t={t}
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        onOpenDonate={handleOpenDonateModal}
+      />
+    </>
+  );
 
   if (view === "landing") {
     return (
@@ -394,20 +436,7 @@ export default function App() {
       >
         <GlobalStyle />
         {VIEWS.landing}
-        <DonateModal
-          t={t}
-          isOpen={showDonateModal}
-          onClose={() => setShowDonateModal(false)}
-          bmcUser={bmcUser}
-          paypalUser={paypalUser}
-          upiId={upiId}
-        />
-        <SuccessModal
-          t={t}
-          isOpen={showSuccessModal}
-          onClose={() => setShowSuccessModal(false)}
-          onOpenDonate={handleOpenDonateModal}
-        />
+        {modals}
       </div>
     );
   }
@@ -452,20 +481,7 @@ export default function App() {
           </ErrorBoundary>
         </main>
       </div>
-      <DonateModal
-        t={t}
-        isOpen={showDonateModal}
-        onClose={() => setShowDonateModal(false)}
-        bmcUser={bmcUser}
-        paypalUser={paypalUser}
-        upiId={upiId}
-      />
-      <SuccessModal
-        t={t}
-        isOpen={showSuccessModal}
-        onClose={() => setShowSuccessModal(false)}
-        onOpenDonate={handleOpenDonateModal}
-      />
+      {modals}
     </div>
   );
 }
