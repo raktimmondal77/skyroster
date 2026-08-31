@@ -170,7 +170,7 @@ export const checkConflicts = (roster, shifts) => {
 
     if (isWork) {
       consecutiveWorkDays++;
-      if (consecutiveWorkDays >= 7) {
+      if (consecutiveWorkDays === 7) {
         warnings.push({
           type: "fatigue",
           date: entry.date,

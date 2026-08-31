@@ -352,12 +352,11 @@ export default function SettingsView({ t, dark, setDark, setRoster, setShifts, D
           <Info size={16} />
           <span>About Smart Shift</span>
         </div>
-        <div style={{ fontSize: 13, color: t.sub, lineHeight: 1.8 }}>
-          Smart Shift Roster Planner v4.0
-          <br />
-          All data is securely saved directly in your web browser using localStorage. 
-          Nothing is uploaded or shared.
-        </div>
+          <div style={{ fontSize: 13, color: t.sub, marginTop: 8, lineHeight: 1.6 }}>
+            Smart Shift Roster Planner v4.0
+            <br />
+            Data is saved locally by default. Team sync and cloud backup features securely use Google Firebase.
+          </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 14 }}>
           {[
             "Compliance Check",

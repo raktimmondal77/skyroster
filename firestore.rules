@@ -5,7 +5,7 @@ service cloud.firestore {
     // (Since there is no user login/auth system right now)
     match /teams/{teamId} {
       allow read, create: if true;
-      allow update: if true;
+      allow update: if request.resource.data.members.size() <= 30;
       allow delete: if false; // Prevent malicious destruction of team documents
     }
     match /users/{userId} {

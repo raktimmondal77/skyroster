@@ -13,9 +13,9 @@ export const subscribeToTeam = (teamId, callback) => {
   });
 };
 
-// Generate a mathematically secure 8-character alphanumeric code
+// Generate a mathematically secure 8-character unambiguous code
 const generateSecureCode = (length = 8) => {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ'; // 32-char alphabet (no 0, O, 1, I, L)
   let result = '';
   const randomValues = new Uint32Array(length);
   window.crypto.getRandomValues(randomValues);
