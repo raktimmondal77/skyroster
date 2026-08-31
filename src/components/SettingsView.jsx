@@ -64,7 +64,7 @@ export default function SettingsView({ t, dark, setDark, setRoster, setShifts, D
     reader.onload = (event) => {
       try {
         const json = JSON.parse(event.target.result);
-        if (json.roster && json.shifts) {
+        if (json.roster && Array.isArray(json.roster) && json.shifts && Array.isArray(json.shifts)) {
           useAppStore.getState().restoreData(json);
           toast.success("Data restored successfully!");
         } else {

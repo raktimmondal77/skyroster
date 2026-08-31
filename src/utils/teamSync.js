@@ -13,9 +13,21 @@ export const subscribeToTeam = (teamId, callback) => {
   });
 };
 
+// Generate a mathematically secure 8-character alphanumeric code
+const generateSecureCode = (length = 8) => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  const randomValues = new Uint32Array(length);
+  window.crypto.getRandomValues(randomValues);
+  for (let i = 0; i < length; i++) {
+    result += chars[randomValues[i] % chars.length];
+  }
+  return result;
+};
+
 export const createTeam = async (teamName, userName, roster) => {
   if (!db) throw new Error("Firebase not configured. Please add your config in src/utils/firebase.js");
-  const teamId = Math.random().toString(36).substring(2, 8).toUpperCase();
+  const teamId = generateSecureCode(8);
   const docRef = doc(db, "teams", teamId);
   await setDoc(docRef, {
     name: teamName,
@@ -31,6 +43,12 @@ export const joinTeam = async (teamId, userName, roster) => {
   const docRef = doc(db, "teams", teamId);
   const snap = await getDoc(docRef);
   if (!snap.exists()) throw new Error("Team not found");
+  
+  // Vulnerability Fix: Prevent overwriting an existing member's roster
+  const teamData = snap.data();
+  if (teamData.members && teamData.members[userName]) {
+    throw new Error(`The name "${userName}" is already taken in this team. Please choose a different name.`);
+  }
   
   await updateDoc(docRef, {
     [`members.${userName}`]: roster
