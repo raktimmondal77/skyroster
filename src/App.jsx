@@ -5,6 +5,7 @@ import Sidebar from "./components/Sidebar.jsx";
 import Header from "./components/Header.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import AuthSplash from "./components/AuthSplash.jsx";
+import CommandPalette from "./components/CommandPalette.jsx";
 import { useHotkeys } from "react-hotkeys-hook";
 import toast from "react-hot-toast";
 import { trackEvent } from "./utils/analytics.js";
@@ -31,22 +32,22 @@ const WelcomeModal   = lazy(() => import("./components/WelcomeModal.jsx"));
 
 const T = (dark) => ({
   is: dark,
-  bg: dark ? "#070D1A" : "#EEF2FB",
+  bg: dark ? "#080D1A" : "#F8FAFC",
   sidebar: dark ? "#0C1322" : "#FFFFFF",
-  sBdr: dark ? "#1C2740" : "#E6ECF6",
-  card: dark ? "#0D1526" : "#FFFFFF",
-  cardBdr: dark ? "#1C2740" : "#E8EDF7",
-  cardHov: dark ? "#121C32" : "#F6F9FF",
-  text: dark ? "#EAF0FF" : "#0A1628",
-  sub: dark ? "#8296BC" : "#5A6E92",
-  inputBg: dark ? "#060C18" : "#FFFFFF",
-  inputBdr: dark ? "#26314F" : "#D0D9EA",
-  inputTxt: dark ? "#EAF0FF" : "#0A1628",
-  tHead: dark ? "#060C18" : "#F4F7FF",
-  tBdr: dark ? "#1C2740" : "#E6ECF6",
+  sBdr: dark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)",
+  card: dark ? "#0E1626" : "#FFFFFF",
+  cardBdr: dark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)",
+  cardHov: dark ? "#141F36" : "#F1F5F9",
+  text: dark ? "#F8FAFC" : "#0F172A",
+  sub: dark ? "#94A3B8" : "#64748B",
+  inputBg: dark ? "#0A0F1D" : "#FFFFFF",
+  inputBdr: dark ? "rgba(255,255,255,0.14)" : "#CBD5E1",
+  inputTxt: dark ? "#F8FAFC" : "#0F172A",
+  tHead: dark ? "#080D1A" : "#F8FAFC",
+  tBdr: dark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)",
   accent: dark ? "#3B82F6" : "#2563EB",
   accentSoft: dark ? "rgba(59,130,246,.12)" : "rgba(37,99,235,.08)",
-  tag: dark ? "#1C2740" : "#E8EDF7",
+  tag: dark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)",
 });
 
 function RouteLoader() {
@@ -97,6 +98,8 @@ function AppLayout({ t, downloadICS, onOpenDonate }) {
   const syncStatus = useAppStore((s) => s.syncStatus);
 
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
 
   const currentView = useMemo(() => {
     const path = location.pathname.replace("/", "");
@@ -111,6 +114,7 @@ function AppLayout({ t, downloadICS, onOpenDonate }) {
     }
   }, [navigate]);
 
+  useHotkeys("mod+k", () => setShowCommandPalette((p) => !p), { preventDefault: true });
   useHotkeys("g+d", () => handleSetView("dashboard"), { preventDefault: true });
   useHotkeys("g+r", () => handleSetView("roster"), { preventDefault: true });
   useHotkeys("g+c", () => handleSetView("calendar"), { preventDefault: true });
@@ -160,16 +164,24 @@ function AppLayout({ t, downloadICS, onOpenDonate }) {
         open={mobOpen}
         setOpen={setMobOpen}
         setShowDonateModal={onOpenDonate}
+        collapsed={collapsed}
+        setCollapsed={setCollapsed}
       />
 
       <div
         className="main-content"
-        style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          minWidth: 0,
+          transition: "margin-left 200ms cubic-bezier(0.16, 1, 0.3, 1)",
+        }}
       >
         <style>{`
           .app-main-area { padding: 18px 16px calc(92px + var(--safe-bottom, 0px)); }
           @media(min-width:768px){
-            .main-content{margin-left:248px}
+            .main-content{ margin-left: ${collapsed ? "68px" : "240px"} !important; }
             .app-main-area { padding: 24px 28px; }
             .mobile-bottom-nav { display: none !important; }
           }
@@ -181,7 +193,7 @@ function AppLayout({ t, downloadICS, onOpenDonate }) {
           downloadICS={downloadICS}
           mobOpen={mobOpen}
           setMobOpen={setMobOpen}
-          onOpenShortcuts={() => setShowShortcuts(true)}
+          onOpenCommandPalette={() => setShowCommandPalette(true)}
           syncStatus={syncStatus}
         />
 
@@ -191,7 +203,16 @@ function AppLayout({ t, downloadICS, onOpenDonate }) {
               <Routes>
                 <Route
                   path="/dashboard"
-                  element={<DashboardView t={t} roster={roster} shifts={shifts} setView={handleSetView} />}
+                  element={
+                    <DashboardView
+                      t={t}
+                      roster={roster}
+                      shifts={shifts}
+                      teamData={teamData}
+                      userName={userName}
+                      setView={handleSetView}
+                    />
+                  }
                 />
                 <Route
                   path="/calendar"
@@ -287,15 +308,16 @@ function AppLayout({ t, downloadICS, onOpenDonate }) {
           bottom: 0,
           left: 0,
           right: 0,
-          height: "calc(60px + var(--safe-bottom, 0px))",
+          height: "calc(58px + var(--safe-bottom, 0px))",
           paddingBottom: "var(--safe-bottom, 0px)",
-          background: t.card,
+          background: t.is ? "rgba(12, 19, 34, 0.92)" : "rgba(255, 255, 255, 0.94)",
           borderTop: `1px solid ${t.cardBdr}`,
           display: "flex",
           alignItems: "center",
           justifyContent: "space-around",
           zIndex: 80,
-          backdropFilter: "blur(12px)",
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
         }}
       >
         {[
@@ -312,27 +334,40 @@ function AppLayout({ t, downloadICS, onOpenDonate }) {
               key={tab.id}
               onClick={() => navigate(tab.path)}
               aria-label={tab.label}
+              className="btn-press"
               style={{
-                background: "none",
+                background: active ? t.accentSoft : "none",
                 border: "none",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                gap: 3,
-                color: active ? "#2563EB" : t.sub,
+                gap: 2,
+                color: active ? t.accent : t.sub,
                 cursor: "pointer",
-                padding: "6px 10px",
-                fontFamily: "'DM Sans', sans-serif",
-                fontSize: 11,
-                fontWeight: active ? 800 : 600,
+                padding: "6px 14px",
+                borderRadius: 12,
+                fontFamily: "'Inter', sans-serif",
+                fontSize: 10,
+                fontWeight: active ? 700 : 500,
+                transition: "all 140ms ease",
               }}
             >
-              <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />
+              <Icon size={18} strokeWidth={active ? 2.5 : 1.9} />
               <span>{tab.label}</span>
             </button>
           );
         })}
       </nav>
+
+      <CommandPalette
+        isOpen={showCommandPalette}
+        onClose={() => setShowCommandPalette(false)}
+        setView={handleSetView}
+        dark={dark}
+        setDark={setDark}
+        downloadICS={downloadICS}
+        t={t}
+      />
 
       {/* Lazy Modals */}
       <Suspense fallback={null}>

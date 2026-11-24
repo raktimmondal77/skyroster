@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { ChevronLeft, ChevronRight, MapPin, AlignLeft, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, MapPin, AlignLeft, X, Check } from "lucide-react";
 import { fmtDate, DAYS_SHORT, isON, calcHrs } from "../utils/rosterHelpers";
 import { sanitizeMemberName } from "../utils/teamSync";
 
@@ -48,16 +48,11 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
 
   useEffect(() => {
     if (!selectedDateStr) return;
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     const handleKeyDown = (e) => {
       if (e.key === "Escape") setSelectedDateStr(null);
     };
     window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.body.style.overflow = prevOverflow;
-      window.removeEventListener("keydown", handleKeyDown);
-    };
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectedDateStr]);
 
   const year = currentDate.getFullYear();
@@ -158,76 +153,78 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
   }, [teamData, cleanSelfName]);
 
   return (
-    <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+    <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {/* Calendar Header Navigation Bar */}
       <div
-        className="glass"
         style={{
           background: t.card,
           border: `1px solid ${t.cardBdr}`,
-          borderRadius: 20,
-          padding: "16px 20px",
+          borderRadius: 16,
+          padding: "12px 18px",
           display: "flex",
           flexWrap: "wrap",
           justifyContent: "space-between",
           alignItems: "center",
-          gap: 14,
-          boxShadow: "0 4px 16px rgba(0,0,0,.03)",
+          gap: 12,
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <button
             onClick={prevMonth}
             aria-label="Previous month"
+            className="btn-press"
             style={{
               background: t.is ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
               border: `1px solid ${t.cardBdr}`,
               color: t.text,
               cursor: "pointer",
-              width: 38,
-              height: 38,
-              borderRadius: 10,
+              width: 34,
+              height: 34,
+              borderRadius: 8,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            <ChevronLeft size={18} />
+            <ChevronLeft size={16} />
           </button>
 
-          <h2 className="sora" style={{ fontSize: 18, fontWeight: 800, color: t.text, minWidth: 155, textAlign: "center", margin: 0 }}>
+          <h2 className="jakarta" style={{ fontSize: 16, fontWeight: 800, color: t.text, minWidth: 150, textAlign: "center", margin: 0 }}>
             {monthLabel}
           </h2>
 
           <button
             onClick={nextMonth}
             aria-label="Next month"
+            className="btn-press"
             style={{
               background: t.is ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
               border: `1px solid ${t.cardBdr}`,
               color: t.text,
               cursor: "pointer",
-              width: 38,
-              height: 38,
-              borderRadius: 10,
+              width: 34,
+              height: 34,
+              borderRadius: 8,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            <ChevronRight size={18} />
+            <ChevronRight size={16} />
           </button>
 
           {!isCurrentMonthShown && (
             <button
               type="button"
               onClick={jumpToToday}
+              className="btn-press"
               style={{
-                padding: "7px 12px",
-                borderRadius: 9,
-                border: "1px solid rgba(37,99,235,0.35)",
-                background: t.is ? "rgba(37,99,235,0.18)" : "#EFF6FF",
-                color: "#2563EB",
-                fontSize: 12,
+                padding: "6px 12px",
+                borderRadius: 8,
+                border: `1px solid ${t.is ? "rgba(59,130,246,0.3)" : "rgba(37,99,235,0.25)"}`,
+                background: t.accentSoft,
+                color: t.accent,
+                fontSize: 11,
                 fontWeight: 700,
                 cursor: "pointer",
               }}
@@ -237,45 +234,46 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
           )}
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+        {/* Quick Stats Pill */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 12, color: t.sub }}>Work Shifts:</span>
-            <span style={{ fontSize: 13, fontWeight: 800, color: "#2563EB" }}>
+            <span style={{ fontSize: 11, color: t.sub }}>Work:</span>
+            <span className="mono" style={{ fontSize: 12, fontWeight: 800, color: t.accent }}>
               {monthStats.workShiftsCount}
             </span>
           </div>
-          <div style={{ width: 1, height: 16, background: t.cardBdr }} />
+          <div style={{ width: 1, height: 14, background: t.cardBdr }} />
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 12, color: t.sub }}>Hours:</span>
-            <span style={{ fontSize: 13, fontWeight: 800, color: "#059669" }}>
+            <span style={{ fontSize: 11, color: t.sub }}>Hours:</span>
+            <span className="mono" style={{ fontSize: 12, fontWeight: 800, color: "#10B981" }}>
               {monthStats.totalWorkHours}h
             </span>
           </div>
-          <div style={{ width: 1, height: 16, background: t.cardBdr }} />
+          <div style={{ width: 1, height: 14, background: t.cardBdr }} />
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 12, color: t.sub }}>Off Days:</span>
-            <span style={{ fontSize: 13, fontWeight: 800, color: t.text }}>
+            <span style={{ fontSize: 11, color: t.sub }}>Off:</span>
+            <span className="mono" style={{ fontSize: 12, fontWeight: 800, color: t.text }}>
               {monthStats.offDaysCount}
             </span>
           </div>
         </div>
       </div>
 
+      {/* Teammate Filter Bar */}
       {teammatesList.length > 0 && (
         <div
-          className="glass"
           style={{
             background: t.card,
             border: `1px solid ${t.cardBdr}`,
-            borderRadius: 14,
-            padding: "10px 16px",
+            borderRadius: 12,
+            padding: "8px 14px",
             display: "flex",
             alignItems: "center",
-            gap: 10,
+            gap: 8,
             flexWrap: "wrap",
           }}
         >
-          <span style={{ fontSize: 12, fontWeight: 700, color: t.sub }}>Team Visibility:</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: t.sub }}>Team Overlay:</span>
           {teammatesList.map((m) => {
             const isVisible = visibleTeammates[m] !== false;
             return (
@@ -285,39 +283,39 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 6,
-                  padding: "4px 10px",
+                  gap: 5,
+                  padding: "3px 8px",
                   borderRadius: 20,
-                  fontSize: 11,
+                  fontSize: 10.5,
                   fontWeight: 600,
                   cursor: "pointer",
-                  border: isVisible ? "1.5px solid #2563EB" : `1px solid ${t.cardBdr}`,
-                  background: isVisible ? "rgba(37,99,235,0.1)" : "transparent",
-                  color: isVisible ? "#2563EB" : t.sub,
-                  transition: "all .15s ease",
+                  border: isVisible ? `1px solid ${t.accent}` : `1px solid ${t.cardBdr}`,
+                  background: isVisible ? t.accentSoft : "transparent",
+                  color: isVisible ? t.accent : t.sub,
+                  transition: "all 120ms ease",
                 }}
               >
                 <span>{m}</span>
-                <span style={{ fontSize: 10 }}>{isVisible ? "✓" : "+"}</span>
+                <span style={{ fontSize: 9 }}>{isVisible ? "✓" : "+"}</span>
               </button>
             );
           })}
         </div>
       )}
 
+      {/* Main Calendar Grid */}
       <div
-        className="glass"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
         style={{
           background: t.card,
           border: `1px solid ${t.cardBdr}`,
-          borderRadius: 20,
+          borderRadius: 16,
           overflow: "hidden",
-          boxShadow: "0 6px 20px rgba(0,0,0,.03)",
         }}
       >
+        {/* Day Name Headers */}
         <div
           style={{
             display: "grid",
@@ -330,11 +328,11 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
             <div
               key={i}
               style={{
-                padding: "10px 4px",
+                padding: "8px 4px",
                 textAlign: "center",
-                fontSize: 11,
-                fontWeight: 800,
-                color: i === 0 || i === 6 ? "#7C3AED" : t.sub,
+                fontSize: 10,
+                fontWeight: 700,
+                color: i === 0 || i === 6 ? "#8B5CF6" : t.sub,
                 textTransform: "uppercase",
                 letterSpacing: "0.5px",
               }}
@@ -344,11 +342,12 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
           ))}
         </div>
 
+        {/* Days Grid */}
         <div
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
-            gridAutoRows: "minmax(85px, 1fr)",
+            gridAutoRows: "minmax(82px, 1fr)",
             gap: 1,
             background: t.tBdr,
           }}
@@ -358,6 +357,7 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
             const row = rosterMap.get(dateStr);
             const sh = row?.shift ? shiftsMap.get(row.shift) : null;
             const isToday = dateStr === todayStr;
+            const isSelected = dateStr === selectedDateStr;
             const isWeekend = [0, 6].includes(cell.date.getDay());
 
             const teamShifts = [];
@@ -385,9 +385,7 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
                 key={idx}
                 role="button"
                 tabIndex={0}
-                aria-label={`${cell.date.toLocaleDateString("en-IN", { weekday: "long", month: "short", day: "numeric" })}: ${
-                  sh ? `${sh.title} (${sh.code})` : "No shift scheduled"
-                }`}
+                aria-label={`${dateStr}: ${sh ? sh.code : "No shift"}`}
                 onClick={() => handleCellClick(dateStr)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
@@ -397,88 +395,100 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
                 }}
                 className="row-hover"
                 style={{
-                  background: cell.isCurrentMonth
+                  background: isSelected
+                    ? (t.is ? "rgba(59,130,246,0.18)" : "#EFF6FF")
+                    : cell.isCurrentMonth
                     ? isToday
-                      ? t.is
-                        ? "rgba(37,99,235,.15)"
-                        : "#F0F6FF"
+                      ? (t.is ? "rgba(59,130,246,0.1)" : "#F0F6FF")
                       : t.card
-                    : t.is
-                    ? "#070C17"
-                    : "#F8FAFC",
-                  padding: "8px 6px",
+                    : (t.is ? "#070C18" : "#F8FAFC"),
+                  padding: "6px 5px",
                   cursor: "pointer",
                   display: "flex",
                   flexDirection: "column",
                   justifyContent: "space-between",
                   boxSizing: "border-box",
-                  boxShadow: isToday ? "inset 0 0 0 2px #2563EB" : "none",
-                  opacity: cell.isCurrentMonth ? 1 : 0.4,
+                  boxShadow: isSelected
+                    ? `inset 0 0 0 2px ${t.accent}`
+                    : isToday
+                    ? `inset 0 0 0 1.5px ${t.accent}`
+                    : "none",
+                  opacity: cell.isCurrentMonth ? 1 : 0.35,
                   overflow: "hidden",
                 }}
               >
+                {/* Cell Top Header */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <span
+                    className="mono"
                     style={{
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: isToday ? 800 : cell.isCurrentMonth ? 700 : 500,
-                      color: isToday ? "#2563EB" : isWeekend ? "#7C3AED" : t.text,
-                      width: 22,
-                      height: 22,
+                      color: isToday ? t.accent : isWeekend ? "#8B5CF6" : t.text,
+                      width: 20,
+                      height: 20,
                       borderRadius: "50%",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      background: isToday ? "rgba(37,99,235,.15)" : "transparent",
+                      background: isToday ? t.accentSoft : "transparent",
                     }}
                   >
                     {cell.date.getDate()}
                   </span>
+
                   {row?.notes && (
-                    <div
-                      style={{ width: 5, height: 5, borderRadius: "50%", background: "#D97706" }}
-                      title="Has notes"
+                    <span
+                      style={{ width: 5, height: 5, borderRadius: "50%", background: "#F59E0B" }}
+                      title="Notes attached"
                     />
                   )}
                 </div>
 
-                <div style={{ margin: "4px 0" }}>
+                {/* Shift Capsule (Linear Micro-Glow Badge) */}
+                <div style={{ margin: "2px 0" }}>
                   {sh ? (
                     <div
                       style={{
-                        background: sh.color,
-                        color: "#ffffff",
+                        background: `${sh.color}15`,
+                        border: `1px solid ${sh.color}45`,
+                        color: sh.color,
                         borderRadius: 6,
-                        padding: "3px 4px",
-                        fontSize: 10,
+                        padding: "2px 4px",
+                        fontSize: 9.5,
                         fontWeight: 800,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 4,
                         textAlign: "center",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
-                        boxShadow: `0 2px 5px ${sh.color}35`,
                       }}
                     >
-                      <div>{sh.code}</div>
+                      <span style={{ width: 5, height: 5, borderRadius: "50%", background: sh.color, flexShrink: 0 }} />
+                      <span>{sh.code}</span>
                       {!sh.isOff && row.startTime && (
-                        <div className="desk-only" style={{ fontSize: 9, opacity: 0.85, marginTop: 1, fontWeight: 500 }}>
+                        <span className="desk-only mono" style={{ fontSize: 8.5, opacity: 0.85, fontWeight: 500 }}>
                           {row.startTime}
-                        </div>
+                        </span>
                       )}
                     </div>
                   ) : (
                     <div style={{ height: 16 }} />
                   )}
 
+                  {/* Teammate Dots */}
                   {teamShifts.length > 0 && (
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 3, marginTop: 4, justifyContent: "center" }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 3, marginTop: 3, justifyContent: "center" }}>
                       {teamShifts.map((ts, tIdx) => (
                         <span
                           key={tIdx}
                           title={`${ts.member}: ${ts.shift.code}`}
                           style={{
-                            width: 6,
-                            height: 6,
+                            width: 5,
+                            height: 5,
                             borderRadius: "50%",
                             background: ts.shift.color,
                             display: "inline-block",
@@ -490,13 +500,14 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
                   )}
                 </div>
 
+                {/* Event Title Line */}
                 <div
                   style={{
-                    height: 14,
+                    height: 12,
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
-                    fontSize: 9,
+                    fontSize: 8.5,
                     color: t.sub,
                     fontWeight: 500,
                   }}
@@ -509,51 +520,72 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
         </div>
       </div>
 
+      {/* Quick Shift Inspector / Drawer (Bottom Sheet on Mobile, Side Inspector on Desktop) */}
       {selectedRowInfo && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="day-editor-title"
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 110,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 16,
-          }}
-        >
+        <>
+          <style>{`
+            .calendar-inspector-backdrop {
+              position: fixed;
+              inset: 0;
+              background: rgba(0, 0, 0, 0.45);
+              backdrop-filter: blur(4px);
+              z-index: 105;
+            }
+            .calendar-inspector-panel {
+              position: fixed;
+              z-index: 110;
+              background: ${t.card};
+              display: flex;
+              flex-direction: column;
+              box-shadow: 0 10px 40px rgba(0,0,0,0.25);
+            }
+            /* Mobile: Bottom Sheet */
+            @media (max-width: 767px) {
+              .calendar-inspector-panel {
+                left: 0;
+                right: 0;
+                bottom: 0;
+                max-height: calc(85dvh - var(--safe-bottom, 0px));
+                border-top-left-radius: 20px;
+                border-top-right-radius: 20px;
+                border-top: 1.5px solid ${t.cardBdr};
+                animation: slideUpSheet 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+              }
+            }
+            /* Desktop: Side Inspector Drawer */
+            @media (min-width: 768px) {
+              .calendar-inspector-panel {
+                top: 0;
+                right: 0;
+                bottom: 0;
+                width: 380px;
+                border-left: 1px solid ${t.cardBdr};
+                animation: slideRightDrawer 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+              }
+            }
+          `}</style>
+
+          {/* Backdrop on Mobile */}
           <div
+            className="calendar-inspector-backdrop mob-only"
             onClick={() => setSelectedDateStr(null)}
-            style={{
-              position: "absolute",
-              inset: 0,
-              background: "rgba(0, 0, 0, 0.5)",
-              backdropFilter: "blur(5px)",
-            }}
           />
 
           <div
-            style={{
-              position: "relative",
-              zIndex: 1,
-              width: "100%",
-              maxWidth: 420,
-              maxHeight: "calc(100dvh - 32px)",
-              background: t.card,
-              borderRadius: 22,
-              border: `1.5px solid ${t.cardBdr}`,
-              boxShadow: "0 24px 60px rgba(0,0,0,.3)",
-              display: "flex",
-              flexDirection: "column",
-              overflow: "hidden",
-              animation: "scaleIn .22s cubic-bezier(.22,.68,0,1.2) forwards",
-            }}
+            className="calendar-inspector-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="inspector-title"
           >
+            {/* Grab Handle for Mobile */}
+            <div className="mob-only" style={{ display: "flex", justifyContent: "center", padding: "8px 0 2px" }}>
+              <div style={{ width: 36, height: 4, borderRadius: 99, background: t.cardBdr }} />
+            </div>
+
+            {/* Header */}
             <div
               style={{
-                padding: "16px 20px",
+                padding: "14px 18px",
                 borderBottom: `1px solid ${t.tBdr}`,
                 display: "flex",
                 justifyContent: "space-between",
@@ -562,125 +594,119 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
               }}
             >
               <div>
-                <h3 id="day-editor-title" className="sora" style={{ fontSize: 16, fontWeight: 800, color: t.text, margin: 0 }}>
-                  Edit Day Schedule
+                <h3 id="inspector-title" className="jakarta" style={{ fontSize: 15, fontWeight: 800, color: t.text, margin: 0 }}>
+                  Day Inspector
                 </h3>
-                <span style={{ fontSize: 12, color: t.sub, fontWeight: 600 }}>
-                  {selectedDateStr} · {selectedRowInfo.idx >= 0 ? "Scheduled" : "Outside Range"}
+                <span className="mono" style={{ fontSize: 11, color: t.sub, fontWeight: 600 }}>
+                  {selectedDateStr} · {selectedRowInfo.idx >= 0 ? "In Roster" : "Outside Range"}
                 </span>
               </div>
               <button
                 onClick={() => setSelectedDateStr(null)}
-                aria-label="Close day schedule editor"
+                aria-label="Close inspector"
+                className="btn-press"
                 style={{
                   background: "none",
                   border: "none",
                   color: t.sub,
                   cursor: "pointer",
-                  width: 32,
-                  height: 32,
+                  width: 30,
+                  height: 30,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  borderRadius: 8,
+                  borderRadius: 6,
                 }}
               >
-                <X size={18} />
+                <X size={16} />
               </button>
             </div>
 
             {selectedRowInfo.idx < 0 ? (
-              <div style={{ padding: 24, textAlign: "center" }}>
-                <p style={{ fontSize: 13, color: t.sub, lineHeight: 1.6 }}>
-                  This date lies outside your current generated roster range. Extend your date range in <strong>Master Roster</strong> to assign shifts here.
+              <div style={{ padding: 22, textAlign: "center" }}>
+                <p style={{ fontSize: 12.5, color: t.sub, lineHeight: 1.6 }}>
+                  This date lies outside your generated roster range. Extend your schedule dates in <strong>Master Roster</strong> to assign shifts here.
                 </p>
-                <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 18 }}>
-                  {setView && (
-                    <button
-                      onClick={() => {
-                        setSelectedDateStr(null);
-                        setView("roster");
-                      }}
-                      style={{
-                        padding: "9px 18px",
-                        borderRadius: 10,
-                        background: "#2563EB",
-                        color: "#fff",
-                        border: "none",
-                        fontSize: 13,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                      }}
-                    >
-                      Open Master Roster →
-                    </button>
-                  )}
+                {setView && (
                   <button
-                    onClick={() => setSelectedDateStr(null)}
+                    onClick={() => {
+                      setSelectedDateStr(null);
+                      setView("roster");
+                    }}
+                    className="btn-press"
                     style={{
-                      padding: "9px 18px",
-                      borderRadius: 10,
-                      background: "transparent",
-                      border: `1.5px solid ${t.cardBdr}`,
-                      color: t.sub,
-                      fontSize: 13,
-                      fontWeight: 600,
+                      marginTop: 14,
+                      padding: "8px 16px",
+                      borderRadius: 8,
+                      background: t.accent,
+                      color: "#fff",
+                      border: "none",
+                      fontSize: 12,
+                      fontWeight: 700,
                       cursor: "pointer",
                     }}
                   >
-                    Close
+                    Open Master Roster →
                   </button>
-                </div>
+                )}
               </div>
             ) : (
               <div
                 style={{
-                  padding: "18px 20px",
+                  padding: "16px 18px",
                   overflowY: "auto",
                   display: "flex",
                   flexDirection: "column",
                   gap: 14,
                 }}
               >
+                {/* 1-Tap Quick Shift Pill Selector */}
                 <div>
-                  <label style={{ fontSize: 11, fontWeight: 800, color: t.sub, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
-                    Select Shift Type
+                  <label style={{ fontSize: 10, fontWeight: 700, color: t.sub, textTransform: "uppercase", letterSpacing: 0.6, display: "block", marginBottom: 6 }}>
+                    Quick Shift Select
                   </label>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                    {shifts.map((sh) => (
-                      <button
-                        key={sh.id}
-                        type="button"
-                        onClick={() => handleSelectShift(sh.code)}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 6,
-                          padding: "6px 12px",
-                          borderRadius: 10,
-                          border: selectedRowInfo.row.shift === sh.code ? `2px solid ${sh.color}` : `1px solid ${t.inputBdr}`,
-                          background: selectedRowInfo.row.shift === sh.code ? `${sh.color}15` : "transparent",
-                          color: selectedRowInfo.row.shift === sh.code ? sh.color : t.text,
-                          fontWeight: 700,
-                          fontSize: 12,
-                          cursor: "pointer",
-                        }}
-                      >
-                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: sh.color }} />
-                        {sh.code}
-                      </button>
-                    ))}
+                    {shifts.map((sh) => {
+                      const isSelected = selectedRowInfo.row.shift === sh.code;
+                      return (
+                        <button
+                          key={sh.id}
+                          type="button"
+                          onClick={() => handleSelectShift(sh.code)}
+                          className="btn-press"
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                            padding: "6px 10px",
+                            borderRadius: 8,
+                            border: isSelected ? `1.5px solid ${sh.color}` : `1px solid ${t.inputBdr}`,
+                            background: isSelected ? `${sh.color}18` : "transparent",
+                            color: isSelected ? sh.color : t.text,
+                            fontWeight: 700,
+                            fontSize: 11,
+                            cursor: "pointer",
+                            transition: "all 120ms ease",
+                          }}
+                        >
+                          <span style={{ width: 6, height: 6, borderRadius: "50%", background: sh.color }} />
+                          <span>{sh.code}</span>
+                          {isSelected && <Check size={12} color={sh.color} />}
+                        </button>
+                      );
+                    })}
                     <button
                       type="button"
                       onClick={() => handleSelectShift("")}
+                      className="btn-press"
                       style={{
-                        padding: "6px 12px",
-                        borderRadius: 10,
-                        border: selectedRowInfo.row.shift === "" ? "2px solid #94A3B8" : `1px solid ${t.inputBdr}`,
+                        padding: "6px 10px",
+                        borderRadius: 8,
+                        border: `1px solid ${t.inputBdr}`,
                         background: "transparent",
                         color: t.sub,
                         fontWeight: 600,
-                        fontSize: 12,
+                        fontSize: 11,
                         cursor: "pointer",
                       }}
                     >
@@ -689,9 +715,10 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
                   </div>
                 </div>
 
+                {/* Start / End Times */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   <div>
-                    <label style={{ fontSize: 11, fontWeight: 800, color: t.sub, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
+                    <label style={{ fontSize: 10, fontWeight: 700, color: t.sub, textTransform: "uppercase", letterSpacing: 0.6, display: "block", marginBottom: 5 }}>
                       Start Time
                     </label>
                     <input
@@ -699,11 +726,11 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
                       value={selectedRowInfo.row.startTime}
                       disabled={isSelectedOff}
                       onChange={(e) => handleUpdateField("startTime", e.target.value)}
-                      style={inputStyle(t, isSelectedOff)}
+                      style={drawerInput(t, isSelectedOff)}
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: 11, fontWeight: 800, color: t.sub, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
+                    <label style={{ fontSize: 10, fontWeight: 700, color: t.sub, textTransform: "uppercase", letterSpacing: 0.6, display: "block", marginBottom: 5 }}>
                       End Time
                     </label>
                     <input
@@ -711,52 +738,55 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
                       value={selectedRowInfo.row.endTime}
                       disabled={isSelectedOff}
                       onChange={(e) => handleUpdateField("endTime", e.target.value)}
-                      style={inputStyle(t, isSelectedOff)}
+                      style={drawerInput(t, isSelectedOff)}
                     />
                   </div>
                 </div>
 
+                {/* Event Title */}
                 <div>
-                  <label style={{ fontSize: 11, fontWeight: 800, color: t.sub, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
-                    Event Title
+                  <label style={{ fontSize: 10, fontWeight: 700, color: t.sub, textTransform: "uppercase", letterSpacing: 0.6, display: "block", marginBottom: 5 }}>
+                    Shift / Duty Title
                   </label>
                   <input
                     type="text"
                     value={selectedRowInfo.row.eventTitle}
                     placeholder="e.g. Ward Coverage, On-Call"
                     onChange={(e) => handleUpdateField("eventTitle", e.target.value)}
-                    style={inputStyle(t)}
+                    style={drawerInput(t)}
                   />
                 </div>
 
+                {/* Location */}
                 <div>
-                  <label style={{ fontSize: 11, fontWeight: 800, color: t.sub, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
+                  <label style={{ fontSize: 10, fontWeight: 700, color: t.sub, textTransform: "uppercase", letterSpacing: 0.6, display: "block", marginBottom: 5 }}>
                     Location
                   </label>
                   <div style={{ position: "relative" }}>
-                    <MapPin size={14} style={{ position: "absolute", left: 12, top: 11, color: t.sub }} />
+                    <MapPin size={13} style={{ position: "absolute", left: 10, top: 10, color: t.sub }} />
                     <input
                       type="text"
                       value={selectedRowInfo.row.location}
-                      placeholder="e.g. Building A, Room 402"
+                      placeholder="e.g. Terminal 2, Station A"
                       onChange={(e) => handleUpdateField("location", e.target.value)}
-                      style={{ ...inputStyle(t), paddingLeft: 34 }}
+                      style={{ ...drawerInput(t), paddingLeft: 30 }}
                     />
                   </div>
                 </div>
 
+                {/* Notes */}
                 <div>
-                  <label style={{ fontSize: 11, fontWeight: 800, color: t.sub, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
+                  <label style={{ fontSize: 10, fontWeight: 700, color: t.sub, textTransform: "uppercase", letterSpacing: 0.6, display: "block", marginBottom: 5 }}>
                     Notes
                   </label>
                   <div style={{ position: "relative" }}>
-                    <AlignLeft size={14} style={{ position: "absolute", left: 12, top: 11, color: t.sub }} />
+                    <AlignLeft size={13} style={{ position: "absolute", left: 10, top: 10, color: t.sub }} />
                     <input
                       type="text"
                       value={selectedRowInfo.row.notes}
-                      placeholder="e.g. Handover details, special instructions..."
+                      placeholder="Handover instructions, key notes..."
                       onChange={(e) => handleUpdateField("notes", e.target.value)}
-                      style={{ ...inputStyle(t), paddingLeft: 34 }}
+                      style={{ ...drawerInput(t), paddingLeft: 30 }}
                     />
                   </div>
                 </div>
@@ -765,22 +795,23 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
                   selectedRowInfo.row.startTime &&
                   selectedRowInfo.row.endTime &&
                   isON(selectedRowInfo.row.startTime, selectedRowInfo.row.endTime, Boolean(selectedShiftDef?.is24Hour)) && (
-                    <div style={{ padding: "8px 12px", borderRadius: 8, background: "rgba(217,119,6,.08)", border: "1px solid #D97706", color: "#D97706", fontSize: 11, fontWeight: 600 }}>
-                      🌙 Overnight shift detected (ends next morning).
+                    <div style={{ padding: "8px 12px", borderRadius: 8, background: "rgba(245,158,11,0.08)", border: "1px solid #F59E0B", color: "#F59E0B", fontSize: 11, fontWeight: 600 }}>
+                      🌙 Overnight shift detected (crosses into following day).
                     </div>
                   )}
 
                 <button
                   type="button"
                   onClick={() => setSelectedDateStr(null)}
+                  className="btn-press"
                   style={{
-                    marginTop: 4,
-                    padding: "11px",
-                    borderRadius: 12,
-                    background: "#2563EB",
+                    marginTop: 6,
+                    padding: "10px",
+                    borderRadius: 10,
+                    background: t.accent,
                     color: "#fff",
                     border: "none",
-                    fontSize: 13,
+                    fontSize: 12,
                     fontWeight: 700,
                     cursor: "pointer",
                   }}
@@ -790,21 +821,21 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
               </div>
             )}
           </div>
-        </div>
+        </>
       )}
     </div>
   );
 }
 
-const inputStyle = (t, disabled = false) => ({
+const drawerInput = (t, disabled = false) => ({
   width: "100%",
-  padding: "9px 12px",
-  borderRadius: 10,
-  border: `1.5px solid ${t.inputBdr}`,
+  padding: "8px 11px",
+  borderRadius: 8,
+  border: `1px solid ${t.inputBdr}`,
   background: t.inputBg,
   color: t.inputTxt,
-  fontSize: 13,
-  fontFamily: "'DM Sans', sans-serif",
+  fontSize: 12,
+  fontFamily: "'Inter', sans-serif",
   outline: "none",
   opacity: disabled ? 0.45 : 1,
   pointerEvents: disabled ? "none" : "auto",

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Clock } from "lucide-react";
+import { Plus, Clock, Trash2, Edit3 } from "lucide-react";
 import { isON } from "../utils/rosterHelpers";
 import toast from "react-hot-toast";
 
@@ -84,56 +84,59 @@ export default function ShiftsView({ t, shifts, setShifts, roster = [], syncShif
   };
 
   return (
-    <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 22, maxWidth: 820 }}>
+    <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 18, maxWidth: 780 }}>
+      {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
         <div>
-          <div className="sora" style={{ fontSize: 28, fontWeight: 900, color: t.text, letterSpacing: "-0.6px" }}>
-            Shift Config
+          <div className="jakarta" style={{ fontSize: 24, fontWeight: 900, color: t.text, letterSpacing: "-0.5px" }}>
+            Shift Types & Wages
           </div>
-          <div style={{ fontSize: 13, color: t.sub, marginTop: 5 }}>
-            Define your operational shift templates and wage rates
+          <div style={{ fontSize: 12.5, color: t.sub, marginTop: 3 }}>
+            Configure operational shift templates, scheduled hours, and pay rates
           </div>
         </div>
         <button
           onClick={openAdd}
+          className="btn-press"
           style={{
             display: "flex",
             alignItems: "center",
             gap: 6,
-            padding: "10px 22px",
-            borderRadius: 11,
-            background: "#2563EB",
+            padding: "8px 16px",
+            borderRadius: 9,
+            background: t.accent,
             color: "#fff",
             border: "none",
-            fontSize: 13,
+            fontSize: 12,
             fontWeight: 700,
             cursor: "pointer",
-            boxShadow: "0 4px 14px rgba(37,99,235,.3)",
+            boxShadow: `0 4px 12px ${t.is ? "rgba(59,130,246,0.3)" : "rgba(37,99,235,0.25)"}`,
           }}
-          className="btn-hover"
         >
-          <Plus size={16} />
-          Add Shift
+          <Plus size={14} />
+          <span>Add Shift</span>
         </button>
       </div>
 
+      {/* Inline Form */}
       {showForm && (
         <div
           className="anim-scale"
           style={{
             background: t.card,
-            border: "1.5px solid rgba(37,99,235,.25)",
-            borderRadius: 22,
-            padding: "26px 28px",
-            boxShadow: "0 12px 40px rgba(37,99,235,.12)",
+            border: `1.5px solid ${t.is ? "rgba(59,130,246,0.35)" : "rgba(37,99,235,0.3)"}`,
+            borderRadius: 16,
+            padding: "20px 22px",
+            boxShadow: "0 8px 30px rgba(0,0,0,0.08)",
           }}
         >
-          <div style={{ fontWeight: 700, color: t.text, fontSize: 16, marginBottom: 20 }}>
-            {editId ? "✏️ Edit Shift Template" : "✨ New Shift Profile"}
+          <div className="jakarta" style={{ fontWeight: 800, color: t.text, fontSize: 14, marginBottom: 14 }}>
+            {editId ? "Edit Shift Template" : "New Shift Template"}
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(170px,1fr))", gap: 18 }}>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 14 }}>
             <label style={{ display: "block" }}>
-              <span style={lbl(t)}>Code</span>
+              <span style={lbl(t)}>Shift Code</span>
               <input
                 maxLength={6}
                 value={form.code}
@@ -145,8 +148,9 @@ export default function ShiftsView({ t, shifts, setShifts, roster = [], syncShif
                 style={inputStyle(t)}
               />
             </label>
+
             <label style={{ display: "block" }}>
-              <span style={lbl(t)}>Title</span>
+              <span style={lbl(t)}>Title / Duty</span>
               <input
                 value={form.title}
                 onChange={(e) => {
@@ -157,8 +161,9 @@ export default function ShiftsView({ t, shifts, setShifts, roster = [], syncShif
                 style={inputStyle(t)}
               />
             </label>
+
             <label style={{ display: "block" }}>
-              <span style={lbl(t)}>Color</span>
+              <span style={lbl(t)}>Badge Color</span>
               <input
                 type="color"
                 aria-label="Shift color"
@@ -166,17 +171,18 @@ export default function ShiftsView({ t, shifts, setShifts, roster = [], syncShif
                 onChange={(e) => setForm((p) => ({ ...p, color: e.target.value }))}
                 style={{
                   width: "100%",
-                  height: 42,
-                  marginTop: 6,
-                  borderRadius: 10,
-                  border: `1.5px solid ${t.inputBdr}`,
+                  height: 36,
+                  marginTop: 4,
+                  borderRadius: 8,
+                  border: `1px solid ${t.inputBdr}`,
                   cursor: "pointer",
                   background: "none",
                 }}
               />
             </label>
+
             <label style={{ display: "block" }}>
-              <span style={lbl(t)}>Start</span>
+              <span style={lbl(t)}>Start Time</span>
               <input
                 type="time"
                 value={form.start}
@@ -188,8 +194,9 @@ export default function ShiftsView({ t, shifts, setShifts, roster = [], syncShif
                 style={{ ...inputStyle(t), opacity: form.isOff ? 0.4 : 1 }}
               />
             </label>
+
             <label style={{ display: "block" }}>
-              <span style={lbl(t)}>End</span>
+              <span style={lbl(t)}>End Time</span>
               <input
                 type="time"
                 value={form.end}
@@ -203,7 +210,7 @@ export default function ShiftsView({ t, shifts, setShifts, roster = [], syncShif
             </label>
 
             <label style={{ display: "block" }}>
-              <span style={lbl(t)}>Hourly Rate (₹)</span>
+              <span style={lbl(t)}>Rate (₹ / hr)</span>
               <input
                 type="number"
                 min="0"
@@ -211,20 +218,20 @@ export default function ShiftsView({ t, shifts, setShifts, roster = [], syncShif
                 value={form.hourlyRate}
                 disabled={form.isOff}
                 onChange={(e) => setForm((p) => ({ ...p, hourlyRate: e.target.value }))}
-                placeholder="e.g. 200"
+                placeholder="e.g. 250"
                 style={{ ...inputStyle(t), opacity: form.isOff ? 0.4 : 1 }}
               />
             </label>
 
-            <div style={{ display: "flex", alignItems: "flex-end", paddingBottom: 2 }}>
+            <div style={{ display: "flex", alignItems: "flex-end" }}>
               <label
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 10,
+                  gap: 8,
                   cursor: "pointer",
-                  padding: "10px 14px",
-                  borderRadius: 10,
+                  padding: "8px 12px",
+                  borderRadius: 8,
                   width: "100%",
                   background: t.is ? "rgba(255,255,255,.04)" : "#F1F5F9",
                   border: `1px solid ${t.cardBdr}`,
@@ -237,9 +244,9 @@ export default function ShiftsView({ t, shifts, setShifts, roster = [], syncShif
                     setFormError("");
                     setForm((p) => ({ ...p, isOff: e.target.checked, start: "", end: "", hourlyRate: "" }));
                   }}
-                  style={{ width: 16, height: 16, accentColor: "#2563EB", cursor: "pointer" }}
+                  style={{ width: 14, height: 14, accentColor: t.accent, cursor: "pointer" }}
                 />
-                <span style={{ fontSize: 13, fontWeight: 600, color: t.text }}>Off / Rest Day</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: t.text }}>Rest Day</span>
               </label>
             </div>
           </div>
@@ -247,54 +254,53 @@ export default function ShiftsView({ t, shifts, setShifts, roster = [], syncShif
           {!form.isOff && form.start && form.end && isON(form.start, form.end) && (
             <div
               style={{
-                marginTop: 16,
-                padding: "10px 16px",
-                borderRadius: 10,
-                background: "rgba(217,119,6,.08)",
-                border: "1px solid #D97706",
-                color: "#D97706",
-                fontSize: 12,
+                marginTop: 12,
+                padding: "8px 12px",
+                borderRadius: 8,
+                background: "rgba(245,158,11,0.08)",
+                border: "1px solid #F59E0B",
+                color: "#F59E0B",
+                fontSize: 11.5,
                 fontWeight: 600,
               }}
             >
-              🌙 Overnight shift detected — end date auto-adjusts to next day on export.
+              🌙 Overnight shift detected — ends on following calendar date.
             </div>
           )}
 
           {formError && (
-            <div style={{ marginTop: 14, fontSize: 12, color: "#EF4444", fontWeight: 600 }}>
+            <div style={{ marginTop: 10, fontSize: 11.5, color: "#EF4444", fontWeight: 600 }}>
               ⚠ {formError}
             </div>
           )}
 
-          <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+          <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
             <button
               onClick={save}
+              className="btn-press"
               style={{
-                padding: "10px 22px",
-                borderRadius: 11,
-                background: "#2563EB",
+                padding: "8px 18px",
+                borderRadius: 8,
+                background: t.accent,
                 color: "#fff",
                 border: "none",
-                fontWeight: 600,
-                fontSize: 13,
+                fontWeight: 700,
+                fontSize: 12,
                 cursor: "pointer",
-                boxShadow: "0 4px 14px rgba(37,99,235,.3)",
               }}
-              className="btn-hover"
             >
-              {editId ? "Update" : "Save Profile"}
+              {editId ? "Update Template" : "Save Template"}
             </button>
             <button
               onClick={cancel}
               style={{
-                padding: "10px 22px",
-                borderRadius: 11,
+                padding: "8px 14px",
+                borderRadius: 8,
                 background: "transparent",
-                border: `1.5px solid ${t.cardBdr}`,
+                border: `1px solid ${t.cardBdr}`,
                 color: t.sub,
                 fontWeight: 600,
-                fontSize: 13,
+                fontSize: 12,
                 cursor: "pointer",
               }}
             >
@@ -304,100 +310,108 @@ export default function ShiftsView({ t, shifts, setShifts, roster = [], syncShif
         </div>
       )}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {/* Shift Templates List */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {Array.isArray(shifts) &&
           shifts.map((sh) => (
             <div
               key={sh.id}
-              className="card-lift"
               style={{
                 background: t.card,
                 border: `1px solid ${t.cardBdr}`,
-                borderRadius: 18,
-                padding: "16px 20px",
+                borderRadius: 14,
+                padding: "12px 16px",
                 display: "flex",
                 alignItems: "center",
-                flexWrap: "wrap",
-                gap: 14,
-                boxShadow: "0 2px 10px rgba(0,0,0,.04)",
+                justifyContent: "space-between",
+                gap: 12,
               }}
             >
-              <div
-                style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 14,
-                  background: sh.color,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontFamily: "'Sora',sans-serif",
-                  fontWeight: 900,
-                  fontSize: 15,
-                  color: "#fff",
-                  boxShadow: `0 6px 16px ${sh.color}45`,
-                  flexShrink: 0,
-                }}
-              >
-                {sh.code}
-              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+                {/* Micro-Glow Badge */}
+                <div
+                  style={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: 10,
+                    background: `${sh.color}18`,
+                    border: `1px solid ${sh.color}45`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                    fontWeight: 900,
+                    fontSize: 14,
+                    color: sh.color,
+                    flexShrink: 0,
+                  }}
+                >
+                  {sh.code}
+                </div>
 
-              <div style={{ flex: "1 1 180px", minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: 14, color: t.text }}>{sh.title}</div>
-                <div style={{ fontSize: 12, color: t.sub, marginTop: 3, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                  <span>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: t.text }}>{sh.title}</div>
+                  <div style={{ fontSize: 11.5, color: t.sub, marginTop: 2, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     {sh.isOff ? (
-                      "Rest / Off Day"
+                      <span style={{ color: "#10B981", fontWeight: 600 }}>Rest / Off Day</span>
                     ) : (
                       <>
-                        <Clock size={11} style={{ display: "inline", marginRight: 4, verticalAlign: "middle" }} />
-                        {sh.start} → {sh.end}
+                        <span className="mono">
+                          <Clock size={11} style={{ display: "inline", marginRight: 4, verticalAlign: "middle" }} />
+                          {sh.start} → {sh.end}
+                        </span>
                         {isON(sh.start, sh.end) && (
-                          <span style={{ color: "#D97706", fontWeight: 700 }}> · 🌙 Overnight</span>
+                          <span style={{ color: "#F59E0B", fontWeight: 700 }}>· 🌙 Overnight</span>
                         )}
+                        <span className="mono" style={{ color: "#10B981", fontWeight: 700 }}>
+                          · ₹{Number(sh.hourlyRate) || 0}/hr
+                        </span>
                       </>
                     )}
-                  </span>
-                  {!sh.isOff && (
-                    <span style={{ color: "#10B981", fontWeight: 600 }}>
-                      ₹{Number(sh.hourlyRate) || 0}/hr
-                    </span>
-                  )}
+                  </div>
                 </div>
               </div>
 
-              <div style={{ display: "flex", gap: 8, flexShrink: 0, marginLeft: "auto" }}>
+              <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                 <button
                   onClick={() => openEdit(sh)}
+                  aria-label={`Edit ${sh.code}`}
+                  className="btn-press"
                   style={{
-                    padding: "7px 14px",
-                    borderRadius: 9,
-                    border: "none",
+                    padding: "6px 12px",
+                    borderRadius: 6,
+                    border: `1px solid ${t.cardBdr}`,
                     cursor: "pointer",
-                    background: t.is ? "rgba(37,99,235,.15)" : "#EFF6FF",
-                    color: "#2563EB",
-                    fontSize: 12,
-                    fontWeight: 700,
-                    fontFamily: "'DM Sans',sans-serif",
+                    background: t.is ? "rgba(255,255,255,0.04)" : "#F8FAFC",
+                    color: t.text,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
                   }}
                 >
-                  Edit
+                  <Edit3 size={11} />
+                  <span>Edit</span>
                 </button>
                 <button
                   onClick={() => del(sh)}
+                  aria-label={`Delete ${sh.code}`}
+                  className="btn-press"
                   style={{
-                    padding: "7px 14px",
-                    borderRadius: 9,
+                    padding: "6px 10px",
+                    borderRadius: 6,
                     border: "none",
                     cursor: "pointer",
-                    background: t.is ? "rgba(239,68,68,.1)" : "#FEE2E2",
+                    background: "rgba(239,68,68,0.1)",
                     color: "#EF4444",
-                    fontSize: 12,
-                    fontWeight: 700,
-                    fontFamily: "'DM Sans',sans-serif",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    display: "flex",
+                    alignItems: "center",
                   }}
                 >
-                  Delete
+                  <Trash2 size={12} />
                 </button>
               </div>
             </div>
@@ -412,20 +426,20 @@ const lbl = (t) => ({
   fontWeight: 700,
   color: t.sub,
   textTransform: "uppercase",
-  letterSpacing: 0.8,
+  letterSpacing: 0.6,
   display: "block",
 });
 
 const inputStyle = (t) => ({
   width: "100%",
-  padding: "9px 13px",
-  borderRadius: 10,
-  border: `1.5px solid ${t.inputBdr}`,
+  padding: "7px 10px",
+  borderRadius: 8,
+  border: `1px solid ${t.inputBdr}`,
   background: t.inputBg,
   color: t.inputTxt,
-  fontSize: 13,
-  fontFamily: "'DM Sans',sans-serif",
+  fontSize: 12,
+  fontFamily: "'Inter', sans-serif",
   outline: "none",
-  marginTop: 6,
+  marginTop: 4,
   boxSizing: "border-box",
 });

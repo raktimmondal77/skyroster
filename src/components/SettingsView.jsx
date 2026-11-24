@@ -1,11 +1,11 @@
 import { useState, useRef } from "react";
-import { Trash2, RotateCcw, Info, Download, Upload, FileSpreadsheet } from "lucide-react";
+import { Trash2, RotateCcw, Info, Download, Upload, FileSpreadsheet, ShieldCheck, Moon, Sun, LogIn, LogOut } from "lucide-react";
 import toast from "react-hot-toast";
 import ConfirmDialog from "./ConfirmDialog.jsx";
 import { useAppStore } from "../store/useAppStore.js";
 import { exportRosterToCSV } from "../utils/csvExport.js";
 
-const Row = ({ label, sub, right, t }) => (
+const SettingRow = ({ label, sub, right, t }) => (
   <div
     style={{
       display: "flex",
@@ -13,13 +13,16 @@ const Row = ({ label, sub, right, t }) => (
       justifyContent: "space-between",
       padding: "16px 0",
       borderBottom: `1px solid ${t.tBdr}`,
+      gap: 16,
     }}
   >
-    <div>
+    <div style={{ flex: 1 }}>
       <div style={{ fontWeight: 600, fontSize: 14, color: t.text }}>{label}</div>
-      {sub && <div style={{ fontSize: 12, color: t.sub, marginTop: 3 }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 12, color: t.sub, marginTop: 3, lineHeight: 1.4 }}>{sub}</div>}
     </div>
-    {right}
+    <div style={{ flexShrink: 0 }}>
+      {right}
+    </div>
   </div>
 );
 
@@ -43,7 +46,7 @@ export default function SettingsView({ t, dark, setDark, setRoster, setShifts, D
         shifts: state.shifts,
         startDate: state.startDate,
         endDate: state.endDate,
-        dark: state.dark
+        dark: state.dark,
       };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
@@ -91,7 +94,6 @@ export default function SettingsView({ t, dark, setDark, setRoster, setShifts, D
         if (!json || typeof json !== "object") throw new Error("Invalid format");
 
         if (Array.isArray(json.roster) && Array.isArray(json.shifts)) {
-          // Sanitize items to prevent store poisoning
           const cleanRoster = json.roster
             .filter((r) => r && typeof r.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(r.date))
             .map((r) => ({
@@ -118,7 +120,6 @@ export default function SettingsView({ t, dark, setDark, setRoster, setShifts, D
               hourlyRate: Number(s.hourlyRate) >= 0 ? Number(s.hourlyRate) : 0,
             }));
 
-          // Ask for confirmation before replacing data
           setDialogState({
             isOpen: true,
             title: "Restore Schedule Backup?",
@@ -192,212 +193,86 @@ export default function SettingsView({ t, dark, setDark, setRoster, setShifts, D
   };
 
   return (
-    <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 560 }}>
+    <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 640 }}>
+      {/* Title */}
       <div>
-        <div className="sora" style={{ fontSize: 26, fontWeight: 900, color: t.text, letterSpacing: "-0.5px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+          <ShieldCheck size={14} color="#6366F1" />
+          <span style={{ fontSize: 11, fontWeight: 700, color: t.sub, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+            Preferences & Storage
+          </span>
+        </div>
+        <h2 className="jakarta" style={{ fontSize: 28, fontWeight: 800, color: t.text, letterSpacing: "-0.03em" }}>
           Settings
-        </div>
-        <div style={{ fontSize: 13, color: t.sub, marginTop: 4 }}>
-          Preferences, data backups & integrations
-        </div>
+        </h2>
+        <p style={{ fontSize: 14, color: t.sub, marginTop: 4 }}>
+          Manage appearances, cloud backups, and local roster storage.
+        </p>
       </div>
 
+      {/* Main Settings Card */}
       <div
-        className="glass"
+        className="glass-card"
         style={{
           background: t.card,
           border: `1px solid ${t.cardBdr}`,
           borderRadius: 20,
-          padding: "6px 20px",
-          boxShadow: "0 2px 14px rgba(0,0,0,.04)",
+          padding: "8px 24px",
         }}
       >
-        <Row t={t}
-          label="Dark Theme"
-          sub="Toggle deep contrast dark mode colors"
+        {/* Dark Mode */}
+        <SettingRow
+          t={t}
+          label="Appearance"
+          sub="Toggle between OLED Dark and Precision Light modes"
           right={
             <button
               role="switch"
               aria-checked={dark}
               aria-label="Toggle dark mode"
               onClick={() => setDark(!dark)}
-              style={{
-                width: 48,
-                height: 26,
-                borderRadius: 13,
-                border: "none",
-                cursor: "pointer",
-                background: dark ? "#2563EB" : "#CBD5E1",
-                position: "relative",
-                transition: "background .2s",
-              }}
-            >
-              <div
-                style={{
-                  position: "absolute",
-                  top: 3,
-                  width: 20,
-                  height: 20,
-                  borderRadius: "50%",
-                  background: "#fff",
-                  boxShadow: "0 1px 4px rgba(0,0,0,.2)",
-                  transform: dark ? "translateX(25px)" : "translateX(3px)",
-                  transition: "transform .2s",
-                }}
-              />
-            </button>
-          }
-        />
-        <Row t={t}
-          label="Clear Roster"
-          sub="Permanently delete all scheduled dates and notes"
-          right={
-            <button
-              onClick={handleClearRoster}
+              className="btn-press"
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 6,
-                padding: "7px 14px",
-                borderRadius: 9,
-                border: "1.5px solid #FCA5A5",
-                background: "transparent",
-                color: "#EF4444",
+                gap: 8,
+                padding: "8px 14px",
+                borderRadius: 99,
+                border: `1px solid ${t.cardBdr}`,
+                background: t.is ? "#0E1526" : "#F1F5F9",
+                color: t.text,
                 fontSize: 12,
                 fontWeight: 700,
                 cursor: "pointer",
-                fontFamily: "'DM Sans',sans-serif",
               }}
             >
-              <Trash2 size={13} />
-              Clear
+              {dark ? <Moon size={14} color="#818CF8" /> : <Sun size={14} color="#F59E0B" />}
+              <span>{dark ? "Dark" : "Light"}</span>
             </button>
           }
         />
-        <Row t={t}
-          label="Reset Shifts"
-          sub="Revert custom templates back to system presets"
-          right={
-            <button
-              onClick={handleResetShifts}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "7px 14px",
-                borderRadius: 9,
-                border: `1.5px solid ${t.cardBdr}`,
-                background: "transparent",
-                color: t.sub,
-                fontSize: 12,
-                fontWeight: 700,
-                cursor: "pointer",
-                fontFamily: "'DM Sans',sans-serif",
-              }}
-            >
-              <RotateCcw size={13} />
-              Reset
-            </button>
+
+        {/* Cloud Backup Google */}
+        <SettingRow
+          t={t}
+          label="Google Cloud Sync"
+          sub={
+            user
+              ? `Connected: ${user.email} (auto-sync active)`
+              : "Sign in with Google to safely back up your roster to the cloud"
           }
-        />
-        <Row t={t}
-          label="Download JSON Backup"
-          sub="Export your entire roster and settings to a JSON file"
-          right={
-            <button
-              onClick={handleExport}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "7px 14px",
-                borderRadius: 9,
-                border: `1.5px solid ${t.cardBdr}`,
-                background: "transparent",
-                color: "#2563EB",
-                fontSize: 12,
-                fontWeight: 700,
-                cursor: "pointer",
-                fontFamily: "'DM Sans',sans-serif",
-              }}
-            >
-              <Download size={13} />
-              JSON
-            </button>
-          }
-        />
-        <Row t={t}
-          label="Export Spreadsheet (CSV)"
-          sub="Download your hours and pay calculation for Excel / Sheets"
-          right={
-            <button
-              onClick={handleExportCSV}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "7px 14px",
-                borderRadius: 9,
-                border: `1.5px solid ${t.cardBdr}`,
-                background: "transparent",
-                color: "#059669",
-                fontSize: 12,
-                fontWeight: 700,
-                cursor: "pointer",
-                fontFamily: "'DM Sans',sans-serif",
-              }}
-            >
-              <FileSpreadsheet size={13} />
-              CSV
-            </button>
-          }
-        />
-        <Row t={t}
-          label="Restore Backup"
-          sub="Import roster and settings from a JSON file"
-          right={
-            <>
-              <input
-                type="file"
-                accept=".json"
-                ref={fileInputRef}
-                style={{ display: "none" }}
-                onChange={handleImport}
-              />
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "7px 14px",
-                  borderRadius: 9,
-                  border: `1.5px solid ${t.cardBdr}`,
-                  background: "transparent",
-                  color: t.accent,
-                  fontSize: 12,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  fontFamily: "'DM Sans',sans-serif",
-                }}
-              >
-                <Upload size={13} />
-                Restore
-              </button>
-            </>
-          }
-        />
-        <Row t={t}
-          label="Cloud Backup (Google)"
-          sub={user ? `Signed in as ${user.email}. Shifts back up automatically.` : "Sign in with Google to sync your shifts across devices"}
           right={
             user ? (
               <button
                 onClick={handleSignOut}
+                className="btn-press"
                 style={{
-                  padding: "7px 14px",
-                  borderRadius: 9,
-                  border: `1.5px solid ${t.cardBdr}`,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "8px 14px",
+                  borderRadius: 10,
+                  border: `1px solid ${t.cardBdr}`,
                   background: "transparent",
                   color: t.sub,
                   fontSize: 12,
@@ -405,6 +280,7 @@ export default function SettingsView({ t, dark, setDark, setRoster, setShifts, D
                   cursor: "pointer",
                 }}
               >
+                <LogOut size={13} />
                 Sign Out
               </button>
             ) : (
@@ -417,62 +293,222 @@ export default function SettingsView({ t, dark, setDark, setRoster, setShifts, D
                     toast.error(e?.message || "Sign in failed");
                   }
                 }}
+                className="btn-press"
                 style={{
-                  padding: "7px 14px",
-                  borderRadius: 9,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "8px 16px",
+                  borderRadius: 10,
                   border: "none",
                   background: "#4285F4",
                   color: "#fff",
                   fontSize: 12,
                   fontWeight: 700,
                   cursor: "pointer",
+                  boxShadow: "0 2px 8px rgba(66,133,244,0.3)",
                 }}
               >
+                <LogIn size={13} />
                 Sign In
               </button>
             )
           }
         />
+
+        {/* Download JSON Backup */}
+        <SettingRow
+          t={t}
+          label="Export JSON Backup"
+          sub="Download complete offline snapshot of all dates, notes, and custom shifts"
+          right={
+            <button
+              onClick={handleExport}
+              className="btn-press"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "8px 14px",
+                borderRadius: 10,
+                border: `1px solid ${t.cardBdr}`,
+                background: t.is ? "rgba(99,102,241,0.1)" : "#EEF2FF",
+                color: "#6366F1",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              <Download size={13} />
+              JSON
+            </button>
+          }
+        />
+
+        {/* Export CSV */}
+        <SettingRow
+          t={t}
+          label="Export CSV Spreadsheet"
+          sub="Download timesheet for Microsoft Excel, Apple Numbers, or Google Sheets"
+          right={
+            <button
+              onClick={handleExportCSV}
+              className="btn-press"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "8px 14px",
+                borderRadius: 10,
+                border: `1px solid ${t.cardBdr}`,
+                background: t.is ? "rgba(16,185,129,0.1)" : "#ECFDF5",
+                color: "#059669",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              <FileSpreadsheet size={13} />
+              CSV
+            </button>
+          }
+        />
+
+        {/* Restore Backup */}
+        <SettingRow
+          t={t}
+          label="Restore JSON Backup"
+          sub="Import roster data and shift templates from an existing backup file"
+          right={
+            <>
+              <input
+                type="file"
+                accept=".json"
+                ref={fileInputRef}
+                style={{ display: "none" }}
+                onChange={handleImport}
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="btn-press"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "8px 14px",
+                  borderRadius: 10,
+                  border: `1px solid ${t.cardBdr}`,
+                  background: t.is ? "rgba(245,158,11,0.1)" : "#FFFBEB",
+                  color: "#D97706",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                <Upload size={13} />
+                Restore
+              </button>
+            </>
+          }
+        />
+
+        {/* Reset Shifts */}
+        <SettingRow
+          t={t}
+          label="Reset Shift Templates"
+          sub="Restore standard shift definitions (Morning, Mid, Evening, Night, Off)"
+          right={
+            <button
+              onClick={handleResetShifts}
+              className="btn-press"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "8px 14px",
+                borderRadius: 10,
+                border: `1px solid ${t.cardBdr}`,
+                background: "transparent",
+                color: t.sub,
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              <RotateCcw size={13} />
+              Reset
+            </button>
+          }
+        />
+
+        {/* Clear Roster */}
+        <SettingRow
+          t={t}
+          label="Clear Current Schedule"
+          sub="Permanently erase all scheduled assignments and custom shift notes"
+          right={
+            <button
+              onClick={handleClearRoster}
+              className="btn-press"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "8px 14px",
+                borderRadius: 10,
+                border: "1px solid rgba(239,68,68,0.3)",
+                background: "rgba(239,68,68,0.06)",
+                color: "#EF4444",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              <Trash2 size={13} />
+              Clear
+            </button>
+          }
+        />
       </div>
 
+      {/* About Box */}
       <div
-        className="glass"
+        className="glass-card"
         style={{
           background: t.card,
           border: `1px solid ${t.cardBdr}`,
           borderRadius: 20,
-          padding: "20px 22px",
-          boxShadow: "0 2px 14px rgba(0,0,0,.04)",
+          padding: "20px 24px",
         }}
       >
-        <div style={{ fontWeight: 700, color: t.text, fontSize: 14, marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
-          <Info size={16} />
-          <span>About SkyRoster</span>
+        <div style={{ fontWeight: 700, color: t.text, fontSize: 14, display: "flex", alignItems: "center", gap: 8 }}>
+          <Info size={16} color="#6366F1" />
+          <span className="jakarta">SkyRoster Architecture</span>
         </div>
         <div style={{ fontSize: 13, color: t.sub, marginTop: 8, lineHeight: 1.6 }}>
-          SkyRoster Smart Shift Planner v4.2
+          Version 4.2 · Offline-First Progressive Web Application.
           <br />
-          Data is saved securely in your web browser by default. Team sync and cloud backup features connect securely to Google Firebase.
+          Your schedule is stored locally by default. Real-time team collaboration and cloud backups sync seamlessly via Google Cloud Firestore.
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 14 }}>
           {[
-            "Compliance Check",
-            "Wage Calculation",
-            "ICS Calendar Export",
+            "Fatigue & Compliance Check",
+            "Wage Calculation Engine",
+            "Universal ICS Calendar",
             "CSV Spreadsheet Export",
-            "Pattern Auto-fill",
-            "Offline First PWA",
-            "Interactive Calendar Grid",
+            "PWA Offline Engine",
+            "Linear + Amie UI/UX",
           ].map((tag) => (
             <span
               key={tag}
               style={{
                 padding: "4px 10px",
                 borderRadius: 20,
-                background: "rgba(100,116,139,0.1)",
+                background: t.is ? "rgba(255,255,255,0.05)" : "rgba(100,116,139,0.08)",
                 color: t.sub,
                 fontSize: 11,
-                fontWeight: 700,
+                fontWeight: 600,
+                border: `1px solid ${t.cardBdr}`,
               }}
             >
               {tag}

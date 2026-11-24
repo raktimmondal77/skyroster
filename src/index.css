@@ -1,4 +1,4 @@
-/* SkyRoster Global Design System & CSS Variables */
+/* SkyRoster Global Design System & CSS Variables — Linear + Amie Hybrid */
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -7,39 +7,45 @@
 }
 
 :root {
-  --bg: #EEF2FB;
+  /* Warm Minimalist Light Canvas */
+  --bg: #F8FAFC;
   --sidebar: #FFFFFF;
-  --sBdr: #E6ECF6;
+  --sBdr: rgba(0, 0, 0, 0.07);
   --card: #FFFFFF;
-  --cardBdr: #E8EDF7;
-  --cardHov: #F6F9FF;
-  --text: #0A1628;
-  --sub: #5A6E92;
+  --cardBdr: rgba(0, 0, 0, 0.08);
+  --cardHov: #F1F5F9;
+  --text: #0F172A;
+  --sub: #64748B;
   --inputBg: #FFFFFF;
-  --inputBdr: #D0D9EA;
-  --inputTxt: #0A1628;
-  --tHead: #F4F7FF;
-  --tBdr: #E6ECF6;
+  --inputBdr: #CBD5E1;
+  --inputTxt: #0F172A;
+  --tHead: #F8FAFC;
+  --tBdr: rgba(0, 0, 0, 0.06);
   --accent: #2563EB;
+  --accentSoft: rgba(37, 99, 235, 0.08);
+  --accentGlow: rgba(37, 99, 235, 0.25);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-top: env(safe-area-inset-top, 0px);
 }
 
 [data-dark] {
-  --bg: #070D1A;
+  /* Deep OLED Precision Dark Canvas */
+  --bg: #080D1A;
   --sidebar: #0C1322;
-  --sBdr: #1C2740;
-  --card: #0D1526;
-  --cardBdr: #1C2740;
-  --cardHov: #121C32;
-  --text: #EAF0FF;
-  --sub: #7488AE;
-  --inputBg: #060C18;
-  --inputBdr: #26314F;
-  --inputTxt: #EAF0FF;
-  --tHead: #060C18;
-  --tBdr: #1C2740;
+  --sBdr: rgba(255, 255, 255, 0.07);
+  --card: #0E1626;
+  --cardBdr: rgba(255, 255, 255, 0.08);
+  --cardHov: #141F36;
+  --text: #F8FAFC;
+  --sub: #94A3B8;
+  --inputBg: #0A0F1D;
+  --inputBdr: rgba(255, 255, 255, 0.14);
+  --inputTxt: #F8FAFC;
+  --tHead: #080D1A;
+  --tBdr: rgba(255, 255, 255, 0.07);
   --accent: #3B82F6;
+  --accentSoft: rgba(59, 130, 246, 0.12);
+  --accentGlow: rgba(59, 130, 246, 0.35);
 }
 
 html {
@@ -49,14 +55,17 @@ html {
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: 'DM Sans', system-ui, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   overflow-x: hidden;
-  transition: background .25s ease;
+  transition: background .2s ease, color .2s ease;
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-.mono { font-family: 'JetBrains Mono', monospace; }
-.sora { font-family: 'Sora', sans-serif; }
+/* Typography Utility Classes */
+.jakarta, .sora { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+.mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
 
 :focus-visible {
   outline: 2px solid var(--accent);
@@ -64,51 +73,85 @@ body {
   border-radius: 8px;
 }
 
-::-webkit-scrollbar { width: 6px; height: 6px; }
+/* Custom Minimalist Scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 99px; }
 [data-dark] ::-webkit-scrollbar-thumb { background: #334155; }
 
 input[type=date]::-webkit-calendar-picker-indicator,
 input[type=time]::-webkit-calendar-picker-indicator {
-  opacity: .5;
+  opacity: .55;
   cursor: pointer;
+  filter: invert(0.3);
+}
+[data-dark] input[type=date]::-webkit-calendar-picker-indicator,
+[data-dark] input[type=time]::-webkit-calendar-picker-indicator {
+  filter: invert(0.85);
 }
 
-@keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes scaleIn { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
-@keyframes slideR { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: translateX(0); } }
-@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
-@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-@keyframes glow { 0%, 100% { box-shadow: 0 0 0 0 rgba(37,99,235,.4); } 50% { box-shadow: 0 0 0 6px rgba(37,99,235,0); } }
+/* Snappy Linear Animations */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes slideRightDrawer {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+@keyframes slideUpSheet {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .6; transform: scale(0.96); }
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 
-.anim-fade-up { animation: fadeUp .35s cubic-bezier(.22,.68,0,1.2) forwards; }
-.anim-scale { animation: scaleIn .22s cubic-bezier(.22,.68,0,1.2) forwards; }
-.anim-scale-up { animation: scaleIn .22s cubic-bezier(.22,.68,0,1.2) forwards; }
-.anim-slide-r { animation: slideR .25s ease forwards; }
-.spin { animation: spin 1s linear infinite; }
+.anim-fade-up { animation: fadeUp .22s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.anim-scale { animation: scaleIn .18s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.anim-scale-up { animation: scaleIn .18s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.spin { animation: spin 0.8s linear infinite; }
 
-/* Safe touch interactions */
+/* Interactive Tactile Classes */
+.btn-press {
+  transition: transform 120ms ease, opacity 120ms ease;
+}
+.btn-press:active {
+  transform: scale(0.97);
+}
+
 @media (hover: hover) and (pointer: fine) {
-  .nav-item:hover { transform: translateX(3px); }
-  .card-lift:hover { transform: translateY(-3px); }
-  .row-hover:hover { background: rgba(37,99,235,.035) !important; }
-  [data-dark] .row-hover:hover { background: rgba(255,255,255,.04) !important; }
+  .card-hover:hover {
+    border-color: var(--accent) !important;
+    box-shadow: 0 4px 20px var(--accentSoft) !important;
+  }
+  .row-hover:hover {
+    background: rgba(37, 99, 235, 0.04) !important;
+  }
+  [data-dark] .row-hover:hover {
+    background: rgba(255, 255, 255, 0.04) !important;
+  }
 }
 
-/* Mobile viewport and safe-area adjustments */
+/* Mobile & Desktop Display Helpers */
 @media (max-width: 767px) {
   .desk-only { display: none !important; }
-  main {
-    padding: 16px 14px calc(80px + var(--safe-bottom)) 14px !important;
-  }
 }
 
 @media (min-width: 768px) {
   .mob-only { display: none !important; }
 }
 
-/* Accessible reduced motion support */
+/* Accessible Reduced Motion Support */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { AlertTriangle, Sparkles, Search, Layers, X } from "lucide-react";
+import { AlertTriangle, Sparkles, Search, Layers, X, Calendar, ChevronDown, ChevronUp, Printer, RefreshCw } from "lucide-react";
 import { calcHrs, dayFull, checkConflicts, isON, isWorkShift, isRestDay, isNightShift } from "../utils/rosterHelpers";
 import EmptyState from "./EmptyState.jsx";
 import toast from "react-hot-toast";
@@ -22,6 +22,8 @@ export default function RosterView({
   const [search, setSearch] = useState("");
   const [dismissed, setDismissed] = useState(false);
   const [activeWarningDate, setActiveWarningDate] = useState(null);
+  const [showGenerator, setShowGenerator] = useState(!roster.length);
+  const [showPresetsMenu, setShowPresetsMenu] = useState(false);
 
   const detected = useMemo(() => detectPattern(roster), [roster, detectPattern]);
   const cycle = detected?.cycle || null;
@@ -94,13 +96,22 @@ export default function RosterView({
 
   const FILTERS = [
     { id: "all", label: "All Days", count: roster.length },
-    { id: "work", label: "Work Shifts", count: workCount },
-    { id: "night", label: "Night Only", count: nightCount },
-    { id: "off", label: "Off Days", count: offCount },
+    { id: "work", label: "Work", count: workCount },
+    { id: "night", label: "Night", count: nightCount },
+    { id: "off", label: "Off", count: offCount },
+  ];
+
+  const PRESETS = [
+    { name: "5-Day Workweek", pattern: ["M1", "M1", "M1", "M1", "M1", "F", "F"] },
+    { name: "Rotating 3-Shift", pattern: ["M1", "M1", "E", "E", "N", "N", "F"] },
+    { name: "4-on / 4-off", pattern: ["M1", "M1", "M1", "M1", "F", "F", "F", "F"] },
+    { name: "Night Owl (4N/3Off)", pattern: ["N", "N", "N", "N", "F", "F", "F"] },
+    { name: "2-2-3 Pitman", pattern: ["M1", "M1", "F", "F", "N", "N", "N", "F", "F", "M1", "M1", "M1", "F", "F"] },
   ];
 
   const handleApplyPreset = (preset) => {
     const res = applyDetectedPattern(preset.pattern);
+    setShowPresetsMenu(false);
     if (res?.missingCodes?.length > 0) {
       toast(`Applied ${preset.name} (skipped missing shift codes: ${res.missingCodes.join(", ")})`, { icon: "⚠️" });
     } else if (res?.appliedCount === 0) {
@@ -111,258 +122,370 @@ export default function RosterView({
   };
 
   return (
-    <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+    <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <style>{`
-        .roster-sticky-bar { bottom: calc(70px + var(--safe-bottom, 0px)); }
+        .roster-sticky-bar { bottom: calc(64px + var(--safe-bottom, 0px)); }
         @media(min-width: 768px) {
           .roster-sticky-bar { bottom: 16px; }
         }
       `}</style>
 
+      {/* Printable Heading */}
       <div className="print-header">
-        <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>SkyRoster Shift Schedule</h1>
-        <p style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
-          Generated on {new Date().toLocaleDateString()} · Total: {totalH.toFixed(1)} hrs · {workCount} scheduled shifts
+        <h1 style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>SkyRoster Shift Schedule</h1>
+        <p style={{ fontSize: 11, color: "#666", marginTop: 4 }}>
+          Generated {new Date().toLocaleDateString()} · Total: {totalH.toFixed(1)} hrs · {workCount} scheduled shifts
         </p>
       </div>
 
+      {/* Top Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
         <div>
-          <div className="sora" style={{ fontSize: 28, fontWeight: 900, color: t.text, letterSpacing: "-0.6px" }}>
+          <div className="jakarta" style={{ fontSize: 24, fontWeight: 900, color: t.text, letterSpacing: "-0.5px" }}>
             Master Roster
           </div>
-          <div style={{ fontSize: 13, color: t.sub, marginTop: 5 }}>
-            {workCount} shifts · {totalH.toFixed(1)} hours planned · ₹{Math.round(estimatedEarnings).toLocaleString("en-IN")} estimated
+          <div style={{ fontSize: 12.5, color: t.sub, marginTop: 3 }}>
+            <span className="mono" style={{ fontWeight: 700, color: t.text }}>{workCount}</span> shifts ·{" "}
+            <span className="mono" style={{ fontWeight: 700, color: t.text }}>{totalH.toFixed(1)}</span> hours ·{" "}
+            <span className="mono" style={{ fontWeight: 700, color: "#10B981" }}>₹{Math.round(estimatedEarnings).toLocaleString("en-IN")}</span> estimated
           </div>
         </div>
+
         {roster.length > 0 && (
           <button
             onClick={() => window.print()}
-            className="no-print btn-hover"
+            className="no-print btn-press"
             style={{
               display: "flex",
               alignItems: "center",
               gap: 6,
-              padding: "9px 16px",
-              borderRadius: 10,
+              padding: "7px 14px",
+              borderRadius: 8,
               border: `1px solid ${t.cardBdr}`,
               background: t.card,
               color: t.text,
-              fontSize: 13,
-              fontWeight: 700,
+              fontSize: 12,
+              fontWeight: 600,
               cursor: "pointer",
             }}
           >
-            🖨️ Print Roster
+            <Printer size={14} color={t.accent} />
+            <span>Print / PDF</span>
           </button>
         )}
       </div>
 
+      {/* Linear Command Toolbar */}
       <div
         style={{
           background: t.card,
           border: `1px solid ${t.cardBdr}`,
-          borderRadius: 20,
-          padding: "22px 26px",
-          boxShadow: "0 2px 14px rgba(0,0,0,.04)",
+          borderRadius: 14,
+          padding: "10px 14px",
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 10,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-          <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#2563EB" }} />
-          <div style={{ fontWeight: 700, color: t.text, fontSize: 14 }}>Generate Schedule</div>
-        </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 14, alignItems: "flex-end" }}>
-          <div style={{ flex: "1 1 160px" }}>
-            <label
-              style={{
-                fontSize: 10,
-                fontWeight: 700,
-                color: t.sub,
-                marginBottom: 6,
-                textTransform: "uppercase",
-                letterSpacing: 0.8,
-                display: "block",
-              }}
-            >
-              Start Date
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                style={inputStyle(t)}
-              />
-            </label>
-          </div>
-          <div style={{ flex: "1 1 160px" }}>
-            <label
-              style={{
-                fontSize: 10,
-                fontWeight: 700,
-                color: t.sub,
-                marginBottom: 6,
-                textTransform: "uppercase",
-                letterSpacing: 0.8,
-                display: "block",
-              }}
-            >
-              End Date
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                style={inputStyle(t)}
-              />
-            </label>
-          </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          {/* Date Range Generator Pill */}
           <button
-            onClick={generateRoster}
+            onClick={() => setShowGenerator((p) => !p)}
+            className="btn-press"
             style={{
-              height: 42,
-              padding: "0 26px",
-              borderRadius: 11,
-              background: "#2563EB",
-              color: "#fff",
-              border: "none",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "6px 12px",
+              borderRadius: 8,
+              border: `1px solid ${showGenerator ? t.accent : t.cardBdr}`,
+              background: showGenerator ? t.accentSoft : "transparent",
+              color: showGenerator ? t.accent : t.text,
+              fontSize: 12,
               fontWeight: 600,
-              fontSize: 13,
               cursor: "pointer",
-              opacity: !startDate || !endDate ? 0.7 : 1,
-              boxShadow: "0 4px 14px rgba(37,99,235,.3)",
             }}
           >
-            ⚡ Generate
+            <Calendar size={13} color={t.accent} />
+            <span className="mono">
+              {startDate && endDate ? `${startDate} → ${endDate}` : "Set Schedule Range"}
+            </span>
+            {showGenerator ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
           </button>
-        </div>
-        {rangeError && (
-          <div style={{ marginTop: 12, fontSize: 12, color: "#EF4444", fontWeight: 600 }}>
-            ⚠ {rangeError}
-          </div>
-        )}
 
-        <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${t.tBdr}` }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: t.sub, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
-            <Layers size={13} color="#2563EB" />
-            <span>Shift Rotation Presets:</span>
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {[
-              { name: "5-Day Workweek", pattern: ["M1", "M1", "M1", "M1", "M1", "F", "F"] },
-              { name: "Rotating 3-Shift", pattern: ["M1", "M1", "E", "E", "N", "N", "F"] },
-              { name: "4-on / 4-off", pattern: ["M1", "M1", "M1", "M1", "F", "F", "F", "F"] },
-              { name: "Night Owl (4N/3Off)", pattern: ["N", "N", "N", "N", "F", "F", "F"] },
-              { name: "2-2-3 Pitman", pattern: ["M1", "M1", "F", "F", "N", "N", "N", "F", "F", "M1", "M1", "M1", "F", "F"] },
-            ].map((preset) => (
-              <button
-                key={preset.name}
-                type="button"
-                onClick={() => handleApplyPreset(preset)}
-                disabled={roster.length === 0}
+          {/* Rotation Presets Menu Button */}
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => setShowPresetsMenu((p) => !p)}
+              disabled={roster.length === 0}
+              className="btn-press"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "6px 12px",
+                borderRadius: 8,
+                border: `1px solid ${t.cardBdr}`,
+                background: "transparent",
+                color: roster.length > 0 ? t.text : t.sub,
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: roster.length > 0 ? "pointer" : "not-allowed",
+                opacity: roster.length > 0 ? 1 : 0.5,
+              }}
+            >
+              <Layers size={13} color={t.accent} />
+              <span>Shift Presets</span>
+              <ChevronDown size={13} />
+            </button>
+
+            {showPresetsMenu && (
+              <div
+                className="anim-scale"
                 style={{
-                  padding: "6px 12px",
-                  borderRadius: 8,
-                  border: `1px solid ${t.cardBdr}`,
-                  background: t.is ? "rgba(255,255,255,0.04)" : "#F8FAFC",
-                  color: roster.length > 0 ? t.text : t.sub,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: roster.length > 0 ? "pointer" : "not-allowed",
-                  opacity: roster.length > 0 ? 1 : 0.5,
-                  transition: "all .15s",
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  marginTop: 6,
+                  width: 220,
+                  background: t.card,
+                  border: `1.5px solid ${t.cardBdr}`,
+                  borderRadius: 12,
+                  boxShadow: "0 12px 30px rgba(0,0,0,0.18)",
+                  zIndex: 60,
+                  overflow: "hidden",
+                  padding: 6,
                 }}
               >
-                + {preset.name}
-              </button>
-            ))}
+                {PRESETS.map((preset) => (
+                  <button
+                    key={preset.name}
+                    type="button"
+                    onClick={() => handleApplyPreset(preset)}
+                    className="btn-press"
+                    style={{
+                      width: "100%",
+                      textAlign: "left",
+                      padding: "8px 10px",
+                      borderRadius: 6,
+                      background: "none",
+                      border: "none",
+                      color: t.text,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <span>{preset.name}</span>
+                    <span style={{ fontSize: 10, color: t.sub }}>({preset.pattern.length}d)</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Search & Segmented Filter Tabs */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          {/* Filters */}
+          <div style={{ display: "flex", background: t.is ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)", padding: 2, borderRadius: 8 }}>
+            {FILTERS.map((f) => {
+              const isActive = filter === f.id;
+              return (
+                <button
+                  key={f.id}
+                  onClick={() => setFilter(f.id)}
+                  style={{
+                    padding: "4px 10px",
+                    borderRadius: 6,
+                    border: "none",
+                    cursor: "pointer",
+                    background: isActive ? t.card : "transparent",
+                    color: isActive ? t.accent : t.sub,
+                    fontSize: 11,
+                    fontWeight: isActive ? 700 : 500,
+                    boxShadow: isActive ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                    transition: "all 120ms ease",
+                  }}
+                >
+                  {f.label} <span className="mono" style={{ opacity: 0.7 }}>({f.count})</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Search Box */}
+          <div style={{ position: "relative" }}>
+            <Search size={13} style={{ position: "absolute", left: 9, top: 9, color: t.sub }} />
+            <input
+              type="text"
+              aria-label="Search by date or day"
+              placeholder="Filter dates..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{
+                padding: "5px 8px 5px 28px",
+                borderRadius: 8,
+                border: `1px solid ${t.inputBdr}`,
+                background: t.inputBg,
+                color: t.inputTxt,
+                fontSize: 11.5,
+                width: 130,
+                fontFamily: "'Inter', sans-serif",
+                outline: "none",
+              }}
+            />
           </div>
         </div>
       </div>
 
+      {/* Collapsible Date Generator Box */}
+      {showGenerator && (
+        <div
+          className="anim-scale"
+          style={{
+            background: t.card,
+            border: `1px solid ${t.cardBdr}`,
+            borderRadius: 14,
+            padding: "16px 18px",
+            boxShadow: "0 4px 16px rgba(0,0,0,0.03)",
+          }}
+        >
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}>
+            <div style={{ flex: "1 1 140px" }}>
+              <label style={labelStyle(t)}>
+                Start Date
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  style={inputStyle(t)}
+                />
+              </label>
+            </div>
+            <div style={{ flex: "1 1 140px" }}>
+              <label style={labelStyle(t)}>
+                End Date
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  style={inputStyle(t)}
+                />
+              </label>
+            </div>
+            <button
+              onClick={() => {
+                generateRoster();
+                if (startDate && endDate && startDate <= endDate) {
+                  setShowGenerator(false);
+                }
+              }}
+              className="btn-press"
+              style={{
+                height: 38,
+                padding: "0 20px",
+                borderRadius: 8,
+                background: t.accent,
+                color: "#fff",
+                border: "none",
+                fontWeight: 700,
+                fontSize: 12,
+                cursor: "pointer",
+                boxShadow: `0 4px 12px ${t.is ? "rgba(59,130,246,0.3)" : "rgba(37,99,235,0.25)"}`,
+              }}
+            >
+              Generate Roster
+            </button>
+          </div>
+
+          {rangeError && (
+            <div style={{ marginTop: 10, fontSize: 11.5, color: "#EF4444", fontWeight: 600 }}>
+              ⚠ {rangeError}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Pattern Auto-Fill Banner */}
       {showBanner && (
         <div
           className="anim-scale"
           style={{
-            borderRadius: 18,
-            padding: "18px 22px",
+            borderRadius: 12,
+            padding: "14px 18px",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
             flexWrap: "wrap",
-            gap: 14,
-            background: "linear-gradient(135deg,rgba(37,99,235,.12),rgba(124,58,237,.12))",
-            border: "1.5px solid rgba(37,99,235,.3)",
-            animation: "scaleIn .25s forwards, glow 2.5s infinite",
+            gap: 12,
+            background: t.accentSoft,
+            border: `1.5px solid ${t.is ? "rgba(59,130,246,0.35)" : "rgba(37,99,235,0.3)"}`,
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
-            <div style={{ fontSize: 26 }} aria-hidden>
-              <Sparkles color="#2563EB" />
-            </div>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontWeight: 800, color: t.text, fontSize: 14 }} className="sora">
-                Pattern detected — {cycle.length}-day cycle
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <Sparkles size={18} color={t.accent} />
+            <div>
+              <div style={{ fontWeight: 800, color: t.text, fontSize: 13 }} className="jakarta">
+                Pattern Detected: {cycle.length}-day repeating cycle
               </div>
-              <div
-                style={{
-                  fontSize: 12,
-                  color: t.sub,
-                  marginTop: 4,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  flexWrap: "wrap",
-                }}
-              >
-                Repeating
+              <div style={{ fontSize: 11.5, color: t.sub, marginTop: 2, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                <span>Cycle:</span>
                 {cycle.map((c, i) => {
                   const sh = shifts.find((s) => s.code === c);
                   return (
                     <span
                       key={i}
                       style={{
-                        padding: "2px 8px",
-                        borderRadius: 7,
-                        fontSize: 11,
+                        padding: "1px 6px",
+                        borderRadius: 4,
+                        fontSize: 10,
                         fontWeight: 800,
-                        background: sh ? sh.color : "#94A3B8",
-                        color: "#fff",
+                        background: sh ? `${sh.color}25` : "#94A3B825",
+                        color: sh ? sh.color : "#94A3B8",
+                        border: `1px solid ${sh ? sh.color : "#94A3B8"}50`,
                       }}
                     >
                       {c}
                     </span>
                   );
                 })}
-                · fills <strong style={{ color: t.text }}>{emptyCount}</strong> empty day
-                {emptyCount !== 1 ? "s" : ""}
+                <span>· will fill <strong style={{ color: t.text }}>{emptyCount}</strong> empty days</span>
               </div>
             </div>
           </div>
-          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+          <div style={{ display: "flex", gap: 6 }}>
             <button
               onClick={() => applyDetectedPattern(detected)}
+              className="btn-press"
               style={{
-                padding: "8px 18px",
-                borderRadius: 10,
-                background: "#2563EB",
+                padding: "6px 14px",
+                borderRadius: 8,
+                background: t.accent,
                 color: "#fff",
                 border: "none",
-                fontWeight: 600,
-                fontSize: 13,
+                fontWeight: 700,
+                fontSize: 12,
                 cursor: "pointer",
-                boxShadow: "0 4px 14px rgba(37,99,235,.3)",
               }}
             >
-              ✨ Auto-fill
+              Auto-fill
             </button>
             <button
               onClick={() => setDismissed(true)}
               style={{
-                padding: "8px 18px",
-                borderRadius: 10,
+                padding: "6px 12px",
+                borderRadius: 8,
                 background: "transparent",
-                border: `1.5px solid ${t.cardBdr}`,
+                border: `1px solid ${t.cardBdr}`,
                 color: t.sub,
                 fontWeight: 600,
-                fontSize: 13,
+                fontSize: 12,
                 cursor: "pointer",
               }}
             >
@@ -372,25 +495,26 @@ export default function RosterView({
         </div>
       )}
 
+      {/* Active Warning Popover Box */}
       {activeWarningDate && warningMap.has(activeWarningDate) && (
         <div
           style={{
             background: t.is ? "rgba(239, 68, 68, 0.1)" : "#FEF2F2",
             border: "1px solid #FCA5A5",
-            borderRadius: 14,
-            padding: "12px 16px",
+            borderRadius: 12,
+            padding: "10px 14px",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "flex-start",
             gap: 12,
           }}
         >
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <div style={{ fontSize: 12, fontWeight: 800, color: "#EF4444" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            <div className="mono" style={{ fontSize: 11.5, fontWeight: 800, color: "#EF4444" }}>
               Alerts for {activeWarningDate}
             </div>
             {warningMap.get(activeWarningDate).map((w, idx) => (
-              <div key={idx} style={{ fontSize: 12.5, color: t.text }}>
+              <div key={idx} style={{ fontSize: 12, color: t.text }}>
                 • {w.msg}
               </div>
             ))}
@@ -398,105 +522,58 @@ export default function RosterView({
           <button
             type="button"
             onClick={() => setActiveWarningDate(null)}
-            aria-label="Close warning details"
-            style={{ background: "none", border: "none", color: t.sub, cursor: "pointer", padding: 4 }}
+            aria-label="Close alert"
+            style={{ background: "none", border: "none", color: t.sub, cursor: "pointer", padding: 2 }}
           >
-            <X size={16} />
+            <X size={14} />
           </button>
         </div>
       )}
 
+      {/* Main Table */}
       {roster.length === 0 ? (
         <EmptyState
           t={t}
           icon="🗓️"
-          title="No roster generated yet"
-          subtitle="Select a start and end date above, then click Generate Roster to build your shift schedule."
-          actionLabel="Generate Roster"
-          onAction={generateRoster}
+          title="No schedule roster generated yet"
+          subtitle="Click Set Schedule Range in the toolbar above, pick your start and end dates, and generate your roster."
+          actionLabel="Open Date Generator"
+          onAction={() => setShowGenerator(true)}
         />
       ) : (
         <>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <div style={{ display: "flex", gap: 6, flex: 1, flexWrap: "wrap" }}>
-              {FILTERS.map((f) => (
-                <button
-                  key={f.id}
-                  onClick={() => setFilter(f.id)}
-                  style={{
-                    padding: "7px 16px",
-                    borderRadius: 20,
-                    border: "none",
-                    cursor: "pointer",
-                    background: filter === f.id ? "#2563EB" : t.is ? "#19243A" : "#EEF2FF",
-                    color: filter === f.id ? "#fff" : t.sub,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    fontFamily: "'DM Sans',sans-serif",
-                    transition: "all .15s",
-                  }}
-                >
-                  {f.label} <span style={{ opacity: 0.7, marginLeft: 4 }}>({f.count})</span>
-                </button>
-              ))}
-            </div>
-
-            <div style={{ position: "relative" }}>
-              <Search size={14} style={{ position: "absolute", left: 12, top: 10, color: t.sub }} />
-              <input
-                type="text"
-                aria-label="Search by date or day"
-                placeholder="Search date or day…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                style={{
-                  padding: "6px 10px 6px 32px",
-                  borderRadius: 8,
-                  border: `1px solid ${t.inputBdr}`,
-                  background: t.inputBg,
-                  color: t.inputTxt,
-                  fontSize: 12,
-                  width: 200,
-                  fontFamily: "'DM Sans',sans-serif",
-                  outline: "none",
-                }}
-              />
-            </div>
-          </div>
-
           <div
             style={{
               background: t.card,
               border: `1px solid ${t.cardBdr}`,
-              borderRadius: 20,
+              borderRadius: 14,
               overflow: "hidden",
-              boxShadow: "0 2px 18px rgba(0,0,0,.05)",
             }}
           >
-            <div className="roster-table-wrap" style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
                 <thead>
                   <tr style={{ background: t.tHead }}>
                     {[
-                      { label: "Date & Day", w: 150 },
-                      { label: "Shift", w: 145 },
-                      { label: "Start → End", w: 215 },
-                      { label: "Event Title", w: 180 },
-                      { label: "Location", w: 140, cls: "hide-mob" },
-                      { label: "Notes", w: 150, cls: "hide-mob" },
-                      { label: "Hours", w: 65 },
+                      { label: "Date & Day", w: 140 },
+                      { label: "Shift", w: 135 },
+                      { label: "Start → End", w: 200 },
+                      { label: "Duty Title", w: 160 },
+                      { label: "Location", w: 130, cls: "hide-mob" },
+                      { label: "Notes", w: 140, cls: "hide-mob" },
+                      { label: "Hours", w: 60 },
                     ].map((col) => (
                       <th
                         key={col.label}
                         className={col.cls || ""}
                         style={{
-                          padding: "12px 16px",
+                          padding: "10px 14px",
                           textAlign: "left",
                           fontSize: 10,
                           fontWeight: 700,
                           color: t.sub,
                           textTransform: "uppercase",
-                          letterSpacing: 0.8,
+                          letterSpacing: 0.7,
                           borderBottom: `1px solid ${t.tBdr}`,
                           whiteSpace: "nowrap",
                           width: col.w,
@@ -520,27 +597,24 @@ export default function RosterView({
                     return (
                       <tr
                         key={`${r.date}-${fIdx}`}
-                        className="roster-row row-hover"
+                        className="row-hover"
                         style={{
                           borderBottom: `1px solid ${t.tBdr}`,
                           background: isOff
-                            ? t.is
-                              ? "rgba(255,255,255,.015)"
-                              : "rgba(5,150,105,.02)"
+                            ? (t.is ? "rgba(255,255,255,0.015)" : "rgba(16,185,129,0.02)")
                             : isWeekend
-                            ? t.is
-                              ? "rgba(124,58,237,.03)"
-                              : "rgba(124,58,237,.02)"
+                            ? (t.is ? "rgba(139,92,246,0.03)" : "rgba(139,92,246,0.02)")
                             : "transparent",
                         }}
                       >
-                        <td style={{ padding: "10px 16px", whiteSpace: "nowrap" }}>
+                        {/* Date Cell */}
+                        <td style={{ padding: "8px 14px", whiteSpace: "nowrap" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                             <div>
-                              <div className="mono" style={{ fontWeight: 600, fontSize: 12, color: t.text }}>
+                              <div className="mono" style={{ fontWeight: 700, fontSize: 12, color: t.text }}>
                                 {r.date}
                               </div>
-                              <div style={{ fontSize: 11, marginTop: 2, fontWeight: 600, color: isWeekend ? "#7C3AED" : t.sub }}>
+                              <div style={{ fontSize: 10.5, color: isWeekend ? "#8B5CF6" : t.sub, fontWeight: 600 }}>
                                 {dayFull(r.date)}
                               </div>
                             </div>
@@ -551,26 +625,28 @@ export default function RosterView({
                                   setActiveWarningDate((prev) => (prev === r.date ? null : r.date))
                                 }
                                 title={rowWarnings.map((w) => w.msg).join(" | ")}
-                                aria-label={`View ${rowWarnings.length} schedule warning(s) for ${r.date}`}
+                                aria-label="Schedule conflict warning"
                                 style={{
                                   background: "rgba(239, 68, 68, 0.12)",
                                   border: "none",
-                                  borderRadius: 6,
-                                  padding: 4,
+                                  borderRadius: 5,
+                                  padding: 3,
                                   color: "#EF4444",
                                   cursor: "pointer",
                                   display: "flex",
                                   alignItems: "center",
                                 }}
                               >
-                                <AlertTriangle size={14} />
+                                <AlertTriangle size={13} />
                               </button>
                             )}
                           </div>
                         </td>
 
-                        <td style={{ padding: "10px 16px", whiteSpace: "nowrap" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        {/* Shift Selector Cell */}
+                        <td style={{ padding: "8px 14px", whiteSpace: "nowrap" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                            {/* Cycle Button */}
                             <button
                               type="button"
                               onClick={() => {
@@ -585,93 +661,77 @@ export default function RosterView({
                               }}
                               title="Click to cycle next shift · Right-click to clear"
                               style={{
-                                padding: "5px 7px",
+                                padding: "4px 6px",
                                 borderRadius: 6,
-                                border: `1px solid ${sh ? sh.color : t.inputBdr}`,
-                                background: sh ? `${sh.color}18` : "transparent",
+                                border: `1px solid ${sh ? `${sh.color}50` : t.inputBdr}`,
+                                background: sh ? `${sh.color}15` : "transparent",
                                 color: sh ? sh.color : t.sub,
-                                fontSize: 10,
+                                fontSize: 9.5,
                                 fontWeight: 800,
                                 cursor: "pointer",
-                                transition: "all .15s",
                               }}
                             >
-                              ↻
+                              <RefreshCw size={11} />
                             </button>
-                            {sh && (
-                              <div
-                                style={{
-                                  width: 3,
-                                  height: 30,
-                                  borderRadius: 2,
-                                  background: sh.color,
-                                  flexShrink: 0,
-                                }}
-                              />
-                            )}
-                            <div>
-                              <select
-                                aria-label={`Shift for ${r.date}`}
-                                value={r.shift}
-                                onChange={(e) => updateEntry(origIdx, "shift", e.target.value)}
-                                style={{
-                                  padding: "5px 8px",
-                                  borderRadius: 8,
-                                  border: `1px solid ${t.inputBdr}`,
-                                  background: t.inputBg,
-                                  color: t.inputTxt,
-                                  fontSize: 12,
-                                  fontWeight: 700,
-                                  fontFamily: "'DM Sans',sans-serif",
-                                  cursor: "pointer",
-                                  outline: "none",
-                                  width: 72,
-                                }}
-                              >
-                                <option value="">—</option>
-                                {shifts.map((s) => (
-                                  <option key={s.id} value={s.code}>
-                                    {s.code}
-                                  </option>
-                                ))}
-                              </select>
-                              {sh && (
-                                <div style={{ fontSize: 10, color: sh.color, marginTop: 2, fontWeight: 700, paddingLeft: 2 }}>
-                                  {sh.title.split(" ")[0]}
-                                </div>
-                              )}
-                            </div>
+
+                            <select
+                              aria-label={`Shift for ${r.date}`}
+                              value={r.shift}
+                              onChange={(e) => updateEntry(origIdx, "shift", e.target.value)}
+                              style={{
+                                padding: "4px 6px",
+                                borderRadius: 6,
+                                border: `1px solid ${t.inputBdr}`,
+                                background: t.inputBg,
+                                color: t.inputTxt,
+                                fontSize: 11.5,
+                                fontWeight: 700,
+                                fontFamily: "'Inter', sans-serif",
+                                cursor: "pointer",
+                                outline: "none",
+                                width: 70,
+                              }}
+                            >
+                              <option value="">—</option>
+                              {shifts.map((s) => (
+                                <option key={s.id} value={s.code}>
+                                  {s.code}
+                                </option>
+                              ))}
+                            </select>
+
                             {r.shift && (
                               <button
                                 type="button"
                                 onClick={() => updateEntry(origIdx, "shift", "")}
                                 title="Clear shift"
-                                aria-label={`Clear shift for ${r.date}`}
+                                aria-label="Clear shift"
                                 style={{
                                   background: "none",
                                   border: "none",
                                   color: t.sub,
                                   cursor: "pointer",
-                                  padding: 4,
+                                  padding: 2,
                                   display: "flex",
                                   alignItems: "center",
                                 }}
                               >
-                                <X size={13} />
+                                <X size={12} />
                               </button>
                             )}
                           </div>
                         </td>
 
-                        <td style={{ padding: "10px 16px", whiteSpace: "nowrap" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        {/* Times Cell */}
+                        <td style={{ padding: "8px 14px", whiteSpace: "nowrap" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                             <input
                               type="time"
                               aria-label="Start time"
                               value={r.startTime}
                               onChange={(e) => updateEntry(origIdx, "startTime", e.target.value)}
                               disabled={isOff}
-                              style={tinyInputStyle(t, isOff, 94)}
+                              style={tableInput(t, isOff, 88)}
                             />
                             <span style={{ color: t.sub, fontSize: 10 }}>→</span>
                             <input
@@ -680,76 +740,81 @@ export default function RosterView({
                               value={r.endTime}
                               onChange={(e) => updateEntry(origIdx, "endTime", e.target.value)}
                               disabled={isOff}
-                              style={tinyInputStyle(t, isOff, 94)}
+                              style={tableInput(t, isOff, 88)}
                             />
-                            {ov && <span title="Overnight shift" style={{ fontSize: 13 }}>🌙</span>}
+                            {ov && <span title="Overnight shift" style={{ fontSize: 12 }}>🌙</span>}
                           </div>
                         </td>
 
-                        <td style={{ padding: "10px 16px", whiteSpace: "nowrap" }}>
+                        {/* Event Title */}
+                        <td style={{ padding: "8px 14px", whiteSpace: "nowrap" }}>
                           <input
                             type="text"
-                            aria-label="Event title"
+                            aria-label="Duty title"
                             value={r.eventTitle}
                             onChange={(e) => updateEntry(origIdx, "eventTitle", e.target.value)}
-                            placeholder="Event title"
-                            style={tinyInputStyle(t, false, 130)}
+                            placeholder="Title..."
+                            style={tableInput(t, false, 120)}
                           />
                         </td>
 
-                        <td className="hide-mob" style={{ padding: "10px 16px", whiteSpace: "nowrap" }}>
+                        {/* Location */}
+                        <td className="hide-mob" style={{ padding: "8px 14px", whiteSpace: "nowrap" }}>
                           <input
                             type="text"
                             aria-label="Location"
                             value={r.location}
                             onChange={(e) => updateEntry(origIdx, "location", e.target.value)}
-                            placeholder="Location"
-                            style={tinyInputStyle(t, false, 115)}
+                            placeholder="Location..."
+                            style={tableInput(t, false, 105)}
                           />
                         </td>
 
-                        <td className="hide-mob" style={{ padding: "10px 16px", whiteSpace: "nowrap" }}>
+                        {/* Notes */}
+                        <td className="hide-mob" style={{ padding: "8px 14px", whiteSpace: "nowrap" }}>
                           <input
                             type="text"
                             aria-label="Notes"
                             value={r.notes}
                             onChange={(e) => updateEntry(origIdx, "notes", e.target.value)}
-                            placeholder="Notes"
-                            style={tinyInputStyle(t, false, 120)}
+                            placeholder="Notes..."
+                            style={tableInput(t, false, 110)}
                           />
                         </td>
 
-                        <td style={{ padding: "10px 16px", whiteSpace: "nowrap" }}>
+                        {/* Hours Pill */}
+                        <td style={{ padding: "8px 14px", whiteSpace: "nowrap" }}>
                           {!isOff && hrs > 0 ? (
-                            <div
+                            <span
+                              className="mono"
                               style={{
                                 display: "inline-block",
-                                padding: "3px 10px",
-                                borderRadius: 20,
-                                background: `${sh?.color || "#2563EB"}18`,
+                                padding: "2px 8px",
+                                borderRadius: 6,
+                                background: `${sh?.color || "#2563EB"}15`,
+                                border: `1px solid ${sh?.color || "#2563EB"}40`,
                                 color: sh?.color || "#2563EB",
-                                fontSize: 11,
+                                fontSize: 10.5,
                                 fontWeight: 700,
                               }}
                             >
                               {hrs.toFixed(1)}h
-                            </div>
+                            </span>
                           ) : isOff ? (
-                            <div
+                            <span
                               style={{
-                                padding: "3px 10px",
-                                borderRadius: 20,
-                                background: "rgba(5,150,105,.12)",
-                                color: "#059669",
-                                fontSize: 11,
+                                padding: "2px 8px",
+                                borderRadius: 6,
+                                background: "rgba(16,185,129,0.12)",
+                                color: "#10B981",
+                                fontSize: 10.5,
                                 fontWeight: 700,
-                                display: "inline-block",
                               }}
                             >
                               Off
-                            </div>
+                            </span>
                           ) : (
-                            <div style={{ color: t.sub, fontSize: 11 }}>—</div>
+                            <span style={{ color: t.sub, fontSize: 11 }}>—</span>
                           )}
                         </td>
                       </tr>
@@ -759,72 +824,81 @@ export default function RosterView({
               </table>
             </div>
 
+            {/* Table Footer */}
             <div
               style={{
-                padding: "12px 20px",
+                padding: "10px 16px",
                 borderTop: `1px solid ${t.tBdr}`,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
                 background: t.tHead,
+                fontSize: 11.5,
+                color: t.sub,
               }}
             >
-              <div style={{ fontSize: 12, color: t.sub }}>
-                Showing {filtered.length} of {roster.length} entries
+              <div>
+                Showing {filtered.length} of {roster.length} rows
               </div>
-              <div style={{ fontSize: 12, color: t.sub, fontWeight: 600 }}>
-                Total:{" "}
-                <span style={{ color: t.text, fontWeight: 700 }}>{totalH.toFixed(1)} hrs</span>
+              <div>
+                Total: <strong className="mono" style={{ color: t.text }}>{totalH.toFixed(1)} hrs</strong>
               </div>
             </div>
           </div>
 
+          {/* Floating Sticky Bottom Bar */}
           <div
             className="no-print roster-sticky-bar"
             style={{
               position: "sticky",
-              zIndex: 40,
-              background: t.card,
+              zIndex: 35,
+              background: t.is ? "rgba(14, 22, 38, 0.92)" : "rgba(255, 255, 255, 0.94)",
+              backdropFilter: "blur(14px)",
+              WebkitBackdropFilter: "blur(14px)",
               border: `1px solid ${t.cardBdr}`,
-              borderRadius: 16,
-              padding: "14px 20px",
+              borderRadius: 14,
+              padding: "12px 18px",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
               flexWrap: "wrap",
-              gap: 16,
-              boxShadow: "0 10px 30px rgba(0,0,0,0.12)",
-              backdropFilter: "blur(8px)",
-              marginTop: 14,
+              gap: 14,
+              boxShadow: "0 8px 30px rgba(0,0,0,0.14)",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
               <div>
-                <span style={{ fontSize: 10, color: t.sub, textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.5 }}>Total Hours</span>
-                <div style={{ fontSize: 16, fontWeight: 800, color: t.text }} className="sora">{totalH.toFixed(1)} hrs</div>
+                <span style={{ fontSize: 9.5, color: t.sub, textTransform: "uppercase", fontWeight: 700 }}>Total Hours</span>
+                <div className="mono" style={{ fontSize: 15, fontWeight: 800, color: t.text }}>
+                  {totalH.toFixed(1)} hrs
+                </div>
               </div>
-              <div style={{ width: 1, height: 28, background: t.tBdr }} />
+              <div style={{ width: 1, height: 24, background: t.tBdr }} />
               <div>
-                <span style={{ fontSize: 10, color: t.sub, textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.5 }}>Est. Earnings</span>
-                <div style={{ fontSize: 16, fontWeight: 800, color: "#10B981" }} className="sora">₹{Math.round(estimatedEarnings).toLocaleString("en-IN")}</div>
+                <span style={{ fontSize: 9.5, color: t.sub, textTransform: "uppercase", fontWeight: 700 }}>Est. Payout</span>
+                <div className="mono" style={{ fontSize: 15, fontWeight: 800, color: "#10B981" }}>
+                  ₹{Math.round(estimatedEarnings).toLocaleString("en-IN")}
+                </div>
               </div>
-              <div style={{ width: 1, height: 28, background: t.tBdr }} />
+              <div style={{ width: 1, height: 24, background: t.tBdr }} />
               <div>
-                <span style={{ fontSize: 10, color: t.sub, textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.5 }}>Breakdown</span>
-                <div style={{ fontSize: 12, fontWeight: 600, color: t.text }}>
+                <span style={{ fontSize: 9.5, color: t.sub, textTransform: "uppercase", fontWeight: 700 }}>Schedule Balance</span>
+                <div style={{ fontSize: 11.5, fontWeight: 600, color: t.text }}>
                   {workCount} Work · {nightCount} Night · {offCount} Off
                 </div>
               </div>
             </div>
+
             <button
               onClick={() => window.print()}
+              className="btn-press"
               style={{
-                padding: "8px 16px",
-                borderRadius: 10,
-                background: t.is ? "rgba(37,99,235,0.2)" : "#EFF6FF",
-                color: "#2563EB",
-                border: "1px solid rgba(37,99,235,0.3)",
-                fontSize: 12,
+                padding: "7px 14px",
+                borderRadius: 8,
+                background: t.accent,
+                color: "#fff",
+                border: "none",
+                fontSize: 11.5,
                 fontWeight: 700,
                 cursor: "pointer",
                 display: "flex",
@@ -832,7 +906,8 @@ export default function RosterView({
                 gap: 6,
               }}
             >
-              🖨️ Print / Save PDF
+              <Printer size={13} />
+              <span>Print Schedule</span>
             </button>
           </div>
         </>
@@ -841,29 +916,40 @@ export default function RosterView({
   );
 }
 
-const inputStyle = (t) => ({
-  marginTop: 6,
-  width: "100%",
-  padding: "9px 13px",
-  borderRadius: 10,
-  border: `1.5px solid ${t.inputBdr}`,
-  background: t.inputBg,
-  color: t.inputTxt,
-  fontSize: 13,
-  fontFamily: "'DM Sans',sans-serif",
-  outline: "none",
+const labelStyle = (t) => ({
+  fontSize: 10,
+  fontWeight: 700,
+  color: t.sub,
+  textTransform: "uppercase",
+  letterSpacing: 0.6,
+  display: "block",
 });
 
-const tinyInputStyle = (t, disabled = false, minWidth = 90) => ({
-  padding: "5px 8px",
+const inputStyle = (t) => ({
+  marginTop: 4,
+  width: "100%",
+  padding: "7px 10px",
   borderRadius: 8,
   border: `1px solid ${t.inputBdr}`,
   background: t.inputBg,
   color: t.inputTxt,
   fontSize: 12,
-  fontFamily: "'DM Sans',sans-serif",
+  fontFamily: "'Inter', sans-serif",
+  outline: "none",
+  boxSizing: "border-box",
+});
+
+const tableInput = (t, disabled = false, minWidth = 80) => ({
+  padding: "4px 7px",
+  borderRadius: 6,
+  border: `1px solid ${t.inputBdr}`,
+  background: t.inputBg,
+  color: t.inputTxt,
+  fontSize: 11.5,
+  fontFamily: "'Inter', sans-serif",
   outline: "none",
   opacity: disabled ? 0.4 : 1,
   width: "100%",
   minWidth,
+  boxSizing: "border-box",
 });

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Users, Copy, CheckCircle, Plus, LogIn, Download } from "lucide-react";
+import { Users, Copy, CheckCircle, Plus, LogIn, Download, LogOut } from "lucide-react";
 import toast from "react-hot-toast";
 import { createTeam, joinTeam } from "../utils/teamSync.js";
 import { buildTeamICS } from "../utils/rosterHelpers.js";
@@ -87,116 +87,340 @@ export default function TeamView({ t, roster, teamId, setTeamId, userName, setUs
     toast.success("Team calendar exported!");
   };
 
+  const memberNames = teamData?.members ? Object.keys(teamData.members) : [];
+
   return (
-    <div className="anim-fade-up" style={{ maxWidth: 600, margin: "0 auto", display: "flex", flexDirection: "column", gap: 24 }}>
+    <div className="anim-fade-up" style={{ maxWidth: 640, margin: "0 auto", display: "flex", flexDirection: "column", gap: 24 }}>
+      {/* Header */}
       <div>
-        <h2 className="sora" style={{ fontSize: 28, fontWeight: 900, color: t.text, letterSpacing: "-0.6px" }}>Team Sync</h2>
-        <p style={{ fontSize: 14, color: t.sub, marginTop: 6 }}>Sync your roster with your team in real-time.</p>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+          <div style={{ width: 8, height: 8, borderRadius: "50%", background: teamId ? "#10B981" : "#6366F1", boxShadow: teamId ? "0 0 8px rgba(16,185,129,0.5)" : "none" }} />
+          <span style={{ fontSize: 11, fontWeight: 700, color: t.sub, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+            Collaboration Engine
+          </span>
+        </div>
+        <h2 className="jakarta" style={{ fontSize: 28, fontWeight: 800, color: t.text, letterSpacing: "-0.03em" }}>
+          Team Sync
+        </h2>
+        <p style={{ fontSize: 14, color: t.sub, marginTop: 4 }}>
+          Sync work rosters in real-time with your crew and compare schedules seamlessly.
+        </p>
       </div>
 
       {error && (
-        <div style={{ padding: "12px 16px", borderRadius: 12, background: "rgba(220, 38, 38, 0.1)", color: "#DC2626", fontSize: 13, fontWeight: 600, border: "1px solid rgba(220, 38, 38, 0.2)" }}>
+        <div style={{ padding: "12px 16px", borderRadius: 12, background: "rgba(239, 68, 68, 0.08)", color: "#EF4444", fontSize: 13, fontWeight: 600, border: "1px solid rgba(239, 68, 68, 0.2)" }}>
           {error}
         </div>
       )}
 
       {!teamId ? (
-        <div style={{ background: t.card, border: `1px solid ${t.cardBdr}`, borderRadius: 20, padding: 24, boxShadow: "0 4px 20px rgba(0,0,0,.03)" }}>
-          <div style={{ marginBottom: 20 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: t.sub, textTransform: "uppercase", display: "block", marginBottom: 8 }}>Your Name</label>
+        <div
+          className="glass-card"
+          style={{
+            background: t.card,
+            border: `1px solid ${t.cardBdr}`,
+            borderRadius: 20,
+            padding: 24,
+            display: "flex",
+            flexDirection: "column",
+            gap: 20,
+          }}
+        >
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 700, color: t.sub, textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 8 }}>
+              Your Display Name
+            </label>
             <input
               type="text"
               value={nameInput}
-              onChange={e => setNameInput(e.target.value)}
-              placeholder="e.g. John Doe"
-              style={{ width: "100%", padding: "12px 16px", borderRadius: 12, border: `1.5px solid ${t.inputBdr}`, background: t.inputBg, color: t.inputTxt, fontSize: 14, outline: "none" }}
+              onChange={(e) => setNameInput(e.target.value)}
+              placeholder="e.g. Captain Miller"
+              style={{
+                width: "100%",
+                padding: "12px 16px",
+                borderRadius: 12,
+                border: `1px solid ${t.inputBdr}`,
+                background: t.inputBg,
+                color: t.inputTxt,
+                fontSize: 14,
+                outline: "none",
+                fontWeight: 600,
+                transition: "border-color 0.15s ease",
+              }}
             />
           </div>
 
-          <div style={{ display: "flex", gap: 16, flexDirection: "column" }}>
-            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: t.sub, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              Join an Existing Team
+            </label>
+            <div style={{ display: "flex", gap: 10 }}>
               <input
                 type="text"
                 value={joinCode}
-                onChange={e => setJoinCode(e.target.value)}
-                placeholder="Team Code (e.g. A7X9K)"
-                style={{ flex: 1, padding: "12px 16px", borderRadius: 12, border: `1.5px solid ${t.inputBdr}`, background: t.inputBg, color: t.inputTxt, fontSize: 14, textTransform: "uppercase", outline: "none" }}
+                onChange={(e) => setJoinCode(e.target.value)}
+                placeholder="Enter 8-character Code"
+                maxLength={10}
+                className="mono"
+                style={{
+                  flex: 1,
+                  padding: "12px 16px",
+                  borderRadius: 12,
+                  border: `1px solid ${t.inputBdr}`,
+                  background: t.inputBg,
+                  color: t.inputTxt,
+                  fontSize: 15,
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.1em",
+                  outline: "none",
+                }}
               />
               <button
                 onClick={handleJoin}
                 disabled={loading}
-                className="btn-hover"
-                style={{ padding: "12px 20px", borderRadius: 12, background: "#10B981", color: "#fff", border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}
+                className="btn-press"
+                style={{
+                  padding: "12px 22px",
+                  borderRadius: 12,
+                  background: "#10B981",
+                  color: "#fff",
+                  border: "none",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  boxShadow: "0 2px 8px rgba(16,185,129,0.3)",
+                }}
               >
-                <LogIn size={18} /> Join
+                <LogIn size={16} /> Join
               </button>
             </div>
-            
-            <div style={{ textAlign: "center", color: t.sub, fontSize: 12, fontWeight: 600 }}>OR</div>
-            
+
+            <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "6px 0" }}>
+              <div style={{ flex: 1, height: 1, background: t.cardBdr }} />
+              <span style={{ color: t.sub, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>OR</span>
+              <div style={{ flex: 1, height: 1, background: t.cardBdr }} />
+            </div>
+
             <button
               onClick={handleCreate}
               disabled={loading}
-              className="btn-hover"
-              style={{ width: "100%", padding: "14px", borderRadius: 12, background: "#2563EB", color: "#fff", border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+              className="btn-press"
+              style={{
+                width: "100%",
+                padding: "14px",
+                borderRadius: 12,
+                background: "linear-gradient(135deg, #4F46E5 0%, #6366F1 100%)",
+                color: "#fff",
+                border: "1px solid rgba(255,255,255,0.15)",
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                boxShadow: "0 4px 14px rgba(79,70,229,0.35)",
+              }}
             >
-              <Plus size={18} /> Create New Team
+              <Plus size={18} /> Create New Team Code
             </button>
           </div>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          {/* Active Team Card */}
-          <div style={{ background: "linear-gradient(135deg, #2563EB 0%, #7C3AED 100%)", borderRadius: 20, padding: 24, color: "#fff", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 10px 25px rgba(37,99,235,0.3)" }}>
+          {/* Active Team Hero Card */}
+          <div
+            style={{
+              background: "linear-gradient(135deg, #1E1B4B 0%, #312E81 50%, #4338CA 100%)",
+              borderRadius: 20,
+              padding: "24px 28px",
+              color: "#fff",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              boxShadow: "0 8px 30px rgba(49,46,129,0.35)",
+              border: "1px solid rgba(255,255,255,0.12)",
+            }}
+          >
             <div>
-              <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.8, textTransform: "uppercase", letterSpacing: 0.5 }}>Your Team Code</div>
-              <div className="mono" style={{ fontSize: 32, fontWeight: 800, marginTop: 4, letterSpacing: 2 }}>{teamId}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#34D399" }} />
+                <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.75)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                  Active Team Code
+                </span>
+              </div>
+              <div className="mono" style={{ fontSize: 32, fontWeight: 800, marginTop: 4, letterSpacing: "0.15em", color: "#F8FAFC" }}>
+                {teamId}
+              </div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", marginTop: 4 }}>
+                Share this 8-character code with your colleagues to sync
+              </div>
             </div>
             <button
               onClick={copyCode}
-              style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 12, padding: "12px", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
+              className="btn-press"
+              title="Copy Team Code"
+              style={{
+                background: copied ? "#10B981" : "rgba(255,255,255,0.15)",
+                border: "1px solid rgba(255,255,255,0.25)",
+                borderRadius: 14,
+                padding: "14px",
+                color: "#fff",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "all 0.15s ease",
+              }}
             >
-              {copied ? <CheckCircle size={24} /> : <Copy size={24} />}
+              {copied ? <CheckCircle size={22} /> : <Copy size={22} />}
             </button>
           </div>
 
-          {/* Members List */}
-          <div style={{ background: t.card, border: `1px solid ${t.cardBdr}`, borderRadius: 20, padding: 24, boxShadow: "0 4px 20px rgba(0,0,0,.03)" }}>
+          {/* Members List Card */}
+          <div
+            className="glass-card"
+            style={{
+              background: t.card,
+              border: `1px solid ${t.cardBdr}`,
+              borderRadius: 20,
+              padding: 24,
+            }}
+          >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <h3 className="sora" style={{ fontSize: 16, fontWeight: 800, color: t.text, display: "flex", alignItems: "center", gap: 8 }}>
-                <Users size={18} color="#2563EB" /> Team Members
-              </h3>
-              <span style={{ fontSize: 12, fontWeight: 700, background: "#EEF2FF", color: "#2563EB", padding: "4px 10px", borderRadius: 99 }}>
-                {teamData?.members ? Object.keys(teamData.members).length : 1}
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Users size={18} color="#6366F1" />
+                <h3 className="jakarta" style={{ fontSize: 16, fontWeight: 700, color: t.text }}>
+                  Connected Roster Members
+                </h3>
+              </div>
+              <span
+                className="mono"
+                style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  background: t.is ? "rgba(99,102,241,0.15)" : "#EEF2FF",
+                  color: "#6366F1",
+                  padding: "4px 10px",
+                  borderRadius: 99,
+                  border: "1px solid rgba(99,102,241,0.25)",
+                }}
+              >
+                {memberNames.length} {memberNames.length === 1 ? "member" : "members"}
               </span>
             </div>
-            
+
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {teamData?.members && Object.keys(teamData.members).map(member => (
-                <div key={member} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderRadius: 12, background: t.is ? "#131C2D" : "#F8FAFC", border: `1px solid ${t.tBdr}` }}>
-                  <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#2563EB", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 14 }}>
-                    {member.charAt(0).toUpperCase()}
+              {memberNames.map((member, idx) => {
+                const isMe = member === userName;
+                const colors = ["#6366F1", "#EC4899", "#10B981", "#F59E0B", "#8B5CF6", "#06B6D4"];
+                const avatarColor = colors[idx % colors.length];
+
+                return (
+                  <div
+                    key={member}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "12px 16px",
+                      borderRadius: 12,
+                      background: t.is ? "#0E1526" : "#F8FAFC",
+                      border: `1px solid ${t.cardBdr}`,
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <div
+                        style={{
+                          width: 34,
+                          height: 34,
+                          borderRadius: "50%",
+                          background: `${avatarColor}20`,
+                          color: avatarColor,
+                          border: `1px solid ${avatarColor}50`,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontWeight: 700,
+                          fontSize: 14,
+                        }}
+                      >
+                        {member.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: t.text, display: "flex", alignItems: "center", gap: 6 }}>
+                          {member}
+                          {isMe && (
+                            <span
+                              style={{
+                                fontSize: 10,
+                                fontWeight: 700,
+                                padding: "2px 6px",
+                                borderRadius: 4,
+                                background: t.is ? "rgba(255,255,255,0.08)" : "#E2E8F0",
+                                color: t.sub,
+                              }}
+                            >
+                              YOU
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: 12, color: t.sub }}>
+                          {teamData?.members[member]?.length || 0} shifts logged
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: t.text }}>
-                    {member} {member === userName && <span style={{ fontSize: 11, color: t.sub, fontWeight: 500 }}>(You)</span>}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
-            <div style={{ display: "flex", gap: 12, marginTop: 24 }}>
+            <div style={{ display: "flex", gap: 12, marginTop: 22 }}>
               <button
                 onClick={handleExportTeam}
-                className="btn-hover"
-                style={{ flex: 1, padding: "12px", borderRadius: 12, background: "#10B981", color: "#fff", border: "none", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+                className="btn-press"
+                style={{
+                  flex: 1,
+                  padding: "12px",
+                  borderRadius: 12,
+                  background: t.is ? "rgba(16,185,129,0.15)" : "#ECFDF5",
+                  color: "#059669",
+                  border: "1px solid rgba(16,185,129,0.3)",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                }}
               >
                 <Download size={16} /> Export Team ICS
               </button>
               <button
                 onClick={() => setShowLeaveDialog(true)}
-                style={{ flex: 1, padding: "12px", borderRadius: 12, background: "transparent", color: "#DC2626", border: "1px dashed #DC2626", fontSize: 13, fontWeight: 700, cursor: "pointer" }}
+                className="btn-press"
+                style={{
+                  flex: 1,
+                  padding: "12px",
+                  borderRadius: 12,
+                  background: "transparent",
+                  color: "#EF4444",
+                  border: "1px dashed rgba(239, 68, 68, 0.4)",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                }}
               >
-                Leave Team
+                <LogOut size={16} /> Leave Team
               </button>
             </div>
           </div>
@@ -207,7 +431,7 @@ export default function TeamView({ t, roster, teamId, setTeamId, userName, setUs
         t={t}
         isOpen={showLeaveDialog}
         title="Leave this Team?"
-        message="You will disconnect from this team's roster sync. You can always rejoin later if you have the 6-character code."
+        message="You will disconnect from this team's roster sync. You can always rejoin later using your team code."
         confirmLabel="Leave Team"
         onConfirm={leaveTeam}
         onClose={() => setShowLeaveDialog(false)}
