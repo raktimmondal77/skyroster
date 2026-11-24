@@ -21,17 +21,23 @@ export const logoutUser = async () => {
 };
 
 export const loadRosterFromCloud = async (uid) => {
-  if (!db) return null;
-  const docRef = doc(db, "users", uid);
-  const snap = await getDoc(docRef);
-  if (snap.exists() && snap.data().roster) {
-    return snap.data().roster;
+  if (!db || !uid) return null;
+  try {
+    const docRef = doc(db, "users", uid);
+    const snap = await getDoc(docRef);
+    if (snap.exists() && snap.data().roster) {
+      return snap.data().roster;
+    }
+    return null;
+  } catch (error) {
+    console.warn("Could not load roster from cloud (possibly offline):", error);
+    return null;
   }
-  return null;
 };
 
 export const saveRosterToCloud = async (uid, roster) => {
   if (!db || !uid) return;
   const docRef = doc(db, "users", uid);
-  await setDoc(docRef, { roster }, { merge: true }).catch(err => console.error("Cloud save failed", err));
+  // Do not catch and swallow error here so caller gets true sync status
+  await setDoc(docRef, { roster, updatedAt: Date.now() }, { merge: true });
 };

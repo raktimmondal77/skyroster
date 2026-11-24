@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { Download, Calendar, Award, Clock, BookOpen } from "lucide-react";
+import { Download, Calendar, Award, Clock, BookOpen, FileSpreadsheet } from "lucide-react";
 import { calcHrs } from "../utils/rosterHelpers";
+import { exportRosterToCSV } from "../utils/csvExport";
+import toast from "react-hot-toast";
 
 export default function ExportView({ t, roster, shifts, downloadICS }) {
   const [done, setDone] = useState(false);
@@ -13,6 +15,12 @@ export default function ExportView({ t, roster, shifts, downloadICS }) {
   const totalH = workRows.reduce((a, r) => a + calcHrs(r.startTime, r.endTime), 0);
   const dates = [...new Set(workRows.map((r) => r.date))];
   const canExport = workRows.length > 0;
+
+  const handleExportCSV = () => {
+    if (!canExport) return;
+    exportRosterToCSV(roster, shifts);
+    toast.success("Spreadsheet (CSV) exported!");
+  };
 
   const handleExport = () => {
     if (!canExport) return;
@@ -158,7 +166,7 @@ export default function ExportView({ t, roster, shifts, downloadICS }) {
                 {totalH.toFixed(1)} hours · {nightRows.length} overnight · {dates.length} unique dates
               </div>
             </div>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
               <button
                 onClick={() => window.print()}
                 className="btn-hover"
@@ -166,18 +174,41 @@ export default function ExportView({ t, roster, shifts, downloadICS }) {
                   display: "flex",
                   alignItems: "center",
                   gap: 8,
-                  padding: "14px 20px",
-                  borderRadius: 14,
-                  border: canExport ? "1px solid rgba(255,255,255,.3)" : "none",
+                  padding: "12px 18px",
+                  borderRadius: 12,
+                  border: canExport ? "1px solid rgba(255,255,255,.3)" : `1.5px solid ${t.cardBdr}`,
                   cursor: "pointer",
-                  background: "rgba(255,255,255,.15)",
-                  color: "#fff",
-                  fontSize: 14,
+                  background: canExport ? "rgba(255,255,255,.18)" : t.card,
+                  color: canExport ? "#fff" : t.text,
+                  fontSize: 13,
                   fontWeight: 700,
                   fontFamily: "'DM Sans',sans-serif",
                 }}
               >
                 🖨️ Print / Save PDF
+              </button>
+              <button
+                onClick={handleExportCSV}
+                disabled={!canExport}
+                aria-label="Export roster as CSV spreadsheet"
+                className="btn-hover"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "12px 18px",
+                  borderRadius: 12,
+                  border: canExport ? "1px solid rgba(255,255,255,.3)" : `1.5px solid ${t.cardBdr}`,
+                  cursor: canExport ? "pointer" : "not-allowed",
+                  background: canExport ? "rgba(255,255,255,.2)" : (t.is ? "#19243A" : "#E2E8F0"),
+                  color: canExport ? "#fff" : t.sub,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  fontFamily: "'DM Sans',sans-serif",
+                  opacity: !canExport ? 0.6 : 1,
+                }}
+              >
+                <FileSpreadsheet size={16} /> Export CSV
               </button>
               <button
                 onClick={handleExport}
@@ -187,18 +218,19 @@ export default function ExportView({ t, roster, shifts, downloadICS }) {
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 10,
-                  padding: "14px 28px",
-                  borderRadius: 14,
+                  gap: 8,
+                  padding: "12px 24px",
+                  borderRadius: 12,
                   border: canExport ? "1px solid rgba(255,255,255,.3)" : "none",
                   cursor: canExport && !animating ? "pointer" : "not-allowed",
-                  background: done ? "#059669" : canExport ? "rgba(255,255,255,.2)" : "#CBD5E1",
-                  color: "#fff",
-                  fontSize: 15,
-                  fontWeight: 700,
+                  background: done ? "#059669" : canExport ? "#ffffff" : (t.is ? "#19243A" : "#CBD5E1"),
+                  color: done ? "#fff" : canExport ? "#1D4ED8" : t.sub,
+                  fontSize: 14,
+                  fontWeight: 800,
                   fontFamily: "'DM Sans',sans-serif",
                   transition: "all .2s",
-                  opacity: !canExport ? 0.45 : 1,
+                  boxShadow: canExport ? "0 4px 14px rgba(0,0,0,.15)" : "none",
+                  opacity: !canExport ? 0.6 : 1,
                 }}
               >
                 {animating ? (
@@ -207,7 +239,7 @@ export default function ExportView({ t, roster, shifts, downloadICS }) {
                   <>✅ Downloaded!</>
                 ) : (
                   <>
-                    <Download size={18} /> Download .ics
+                    <Download size={16} /> Download .ics
                   </>
                 )}
               </button>

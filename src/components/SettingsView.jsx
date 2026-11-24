@@ -1,8 +1,9 @@
 import { useState, useRef } from "react";
-import { Trash2, RotateCcw, Info, Download, Upload } from "lucide-react";
+import { Trash2, RotateCcw, Info, Download, Upload, FileSpreadsheet } from "lucide-react";
 import toast from "react-hot-toast";
 import ConfirmDialog from "./ConfirmDialog.jsx";
 import { useAppStore } from "../store/useAppStore.js";
+import { exportRosterToCSV } from "../utils/csvExport.js";
 
 const Row = ({ label, sub, right, t }) => (
   <div
@@ -37,10 +38,11 @@ export default function SettingsView({ t, dark, setDark, setRoster, setShifts, D
     try {
       const state = useAppStore.getState();
       const data = {
+        version: 2,
         roster: state.roster,
         shifts: state.shifts,
-        teamId: state.teamId,
-        userName: state.userName,
+        startDate: state.startDate,
+        endDate: state.endDate,
         dark: state.dark
       };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -57,24 +59,91 @@ export default function SettingsView({ t, dark, setDark, setRoster, setShifts, D
     }
   };
 
+  const handleExportCSV = () => {
+    const { roster, shifts } = useAppStore.getState();
+    if (!roster || roster.length === 0) {
+      toast.error("No roster data to export.");
+      return;
+    }
+    exportRosterToCSV(roster, shifts);
+    toast.success("Spreadsheet (CSV) exported!");
+  };
+
   const handleImport = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("File is too large (max 2MB).");
+      e.target.value = null;
+      return;
+    }
+
     const reader = new FileReader();
+    reader.onerror = () => {
+      toast.error("Error reading file.");
+      e.target.value = null;
+    };
+
     reader.onload = (event) => {
       try {
         const json = JSON.parse(event.target.result);
-        if (json.roster && Array.isArray(json.roster) && json.shifts && Array.isArray(json.shifts)) {
-          useAppStore.getState().restoreData(json);
-          toast.success("Data restored successfully!");
+        if (!json || typeof json !== "object") throw new Error("Invalid format");
+
+        if (Array.isArray(json.roster) && Array.isArray(json.shifts)) {
+          // Sanitize items to prevent store poisoning
+          const cleanRoster = json.roster
+            .filter((r) => r && typeof r.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(r.date))
+            .map((r) => ({
+              date: r.date,
+              day: String(r.day || ""),
+              shift: String(r.shift || "").slice(0, 8),
+              startTime: String(r.startTime || "").slice(0, 5),
+              endTime: String(r.endTime || "").slice(0, 5),
+              eventTitle: String(r.eventTitle || "").slice(0, 80),
+              location: String(r.location || "").slice(0, 80),
+              notes: String(r.notes || "").slice(0, 300),
+            }));
+
+          const cleanShifts = json.shifts
+            .filter((s) => s && typeof s.code === "string")
+            .map((s) => ({
+              id: s.id || `shift-${Math.random().toString(36).slice(2, 7)}`,
+              code: String(s.code).slice(0, 8),
+              title: String(s.title || s.code).slice(0, 40),
+              start: String(s.start || "").slice(0, 5),
+              end: String(s.end || "").slice(0, 5),
+              color: typeof s.color === "string" && s.color.startsWith("#") ? s.color : "#2563EB",
+              isOff: Boolean(s.isOff),
+              hourlyRate: Number(s.hourlyRate) >= 0 ? Number(s.hourlyRate) : 0,
+            }));
+
+          // Ask for confirmation before replacing data
+          setDialogState({
+            isOpen: true,
+            title: "Restore Schedule Backup?",
+            message: `This will replace your current schedule with ${cleanRoster.length} dates and ${cleanShifts.length} shift templates from the backup file.`,
+            confirmLabel: "Restore Data",
+            onConfirm: () => {
+              useAppStore.getState().restoreData({
+                roster: cleanRoster,
+                shifts: cleanShifts,
+                startDate: json.startDate || cleanRoster[0]?.date || "",
+                endDate: json.endDate || cleanRoster[cleanRoster.length - 1]?.date || "",
+                dark: Boolean(json.dark),
+              });
+              toast.success("Roster and settings restored successfully!");
+            },
+          });
         } else {
-          toast.error("Invalid backup file.");
+          toast.error("Invalid backup schema: Missing roster or shifts.");
         }
       } catch (err) {
         console.error(err);
-        toast.error("Failed to parse file.");
+        toast.error("Failed to parse file: " + (err.message || "Invalid JSON"));
+      } finally {
+        e.target.value = null;
       }
-      e.target.value = null;
     };
     reader.readAsText(file);
   };
@@ -123,22 +192,23 @@ export default function SettingsView({ t, dark, setDark, setRoster, setShifts, D
   };
 
   return (
-    <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 22, maxWidth: 560 }}>
+    <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 560 }}>
       <div>
-        <div className="sora" style={{ fontSize: 28, fontWeight: 900, color: t.text, letterSpacing: "-0.6px" }}>
+        <div className="sora" style={{ fontSize: 26, fontWeight: 900, color: t.text, letterSpacing: "-0.5px" }}>
           Settings
         </div>
-        <div style={{ fontSize: 13, color: t.sub, marginTop: 5 }}>
-          Preferences & data management
+        <div style={{ fontSize: 13, color: t.sub, marginTop: 4 }}>
+          Preferences, data backups & integrations
         </div>
       </div>
 
       <div
+        className="glass"
         style={{
           background: t.card,
           border: `1px solid ${t.cardBdr}`,
           borderRadius: 20,
-          padding: "6px 24px",
+          padding: "6px 20px",
           boxShadow: "0 2px 14px rgba(0,0,0,.04)",
         }}
       >
@@ -188,7 +258,7 @@ export default function SettingsView({ t, dark, setDark, setRoster, setShifts, D
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
-                padding: "7px 16px",
+                padding: "7px 14px",
                 borderRadius: 9,
                 border: "1.5px solid #FCA5A5",
                 background: "transparent",
@@ -214,7 +284,7 @@ export default function SettingsView({ t, dark, setDark, setRoster, setShifts, D
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
-                padding: "7px 16px",
+                padding: "7px 14px",
                 borderRadius: 9,
                 border: `1.5px solid ${t.cardBdr}`,
                 background: "transparent",
@@ -231,8 +301,8 @@ export default function SettingsView({ t, dark, setDark, setRoster, setShifts, D
           }
         />
         <Row t={t}
-          label="Download Backup"
-          sub="Export your roster and settings to a JSON file"
+          label="Download JSON Backup"
+          sub="Export your entire roster and settings to a JSON file"
           right={
             <button
               onClick={handleExport}
@@ -240,11 +310,11 @@ export default function SettingsView({ t, dark, setDark, setRoster, setShifts, D
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
-                padding: "7px 16px",
+                padding: "7px 14px",
                 borderRadius: 9,
                 border: `1.5px solid ${t.cardBdr}`,
                 background: "transparent",
-                color: t.accent,
+                color: "#2563EB",
                 fontSize: 12,
                 fontWeight: 700,
                 cursor: "pointer",
@@ -252,7 +322,33 @@ export default function SettingsView({ t, dark, setDark, setRoster, setShifts, D
               }}
             >
               <Download size={13} />
-              Backup
+              JSON
+            </button>
+          }
+        />
+        <Row t={t}
+          label="Export Spreadsheet (CSV)"
+          sub="Download your hours and pay calculation for Excel / Sheets"
+          right={
+            <button
+              onClick={handleExportCSV}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "7px 14px",
+                borderRadius: 9,
+                border: `1.5px solid ${t.cardBdr}`,
+                background: "transparent",
+                color: "#059669",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+                fontFamily: "'DM Sans',sans-serif",
+              }}
+            >
+              <FileSpreadsheet size={13} />
+              CSV
             </button>
           }
         />
@@ -274,7 +370,7 @@ export default function SettingsView({ t, dark, setDark, setRoster, setShifts, D
                   display: "flex",
                   alignItems: "center",
                   gap: 6,
-                  padding: "7px 16px",
+                  padding: "7px 14px",
                   borderRadius: 9,
                   border: `1.5px solid ${t.cardBdr}`,
                   background: "transparent",
@@ -293,13 +389,13 @@ export default function SettingsView({ t, dark, setDark, setRoster, setShifts, D
         />
         <Row t={t}
           label="Cloud Backup (Google)"
-          sub={user ? `Signed in as ${user.email}. Shifts are backing up automatically.` : "Sign in with Google to sync your shifts across devices"}
+          sub={user ? `Signed in as ${user.email}. Shifts back up automatically.` : "Sign in with Google to sync your shifts across devices"}
           right={
             user ? (
               <button
                 onClick={handleSignOut}
                 style={{
-                  padding: "7px 16px",
+                  padding: "7px 14px",
                   borderRadius: 9,
                   border: `1.5px solid ${t.cardBdr}`,
                   background: "transparent",
@@ -322,7 +418,7 @@ export default function SettingsView({ t, dark, setDark, setRoster, setShifts, D
                   }
                 }}
                 style={{
-                  padding: "7px 16px",
+                  padding: "7px 14px",
                   borderRadius: 9,
                   border: "none",
                   background: "#4285F4",
@@ -340,38 +436,40 @@ export default function SettingsView({ t, dark, setDark, setRoster, setShifts, D
       </div>
 
       <div
+        className="glass"
         style={{
           background: t.card,
           border: `1px solid ${t.cardBdr}`,
           borderRadius: 20,
-          padding: "22px 24px",
+          padding: "20px 22px",
           boxShadow: "0 2px 14px rgba(0,0,0,.04)",
         }}
       >
         <div style={{ fontWeight: 700, color: t.text, fontSize: 14, marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
           <Info size={16} />
-          <span>About Smart Shift</span>
+          <span>About SkyRoster</span>
         </div>
-          <div style={{ fontSize: 13, color: t.sub, marginTop: 8, lineHeight: 1.6 }}>
-            Smart Shift Roster Planner v4.0
-            <br />
-            Data is saved locally by default. Team sync and cloud backup features securely use Google Firebase.
-          </div>
+        <div style={{ fontSize: 13, color: t.sub, marginTop: 8, lineHeight: 1.6 }}>
+          SkyRoster Smart Shift Planner v4.2
+          <br />
+          Data is saved securely in your web browser by default. Team sync and cloud backup features connect securely to Google Firebase.
+        </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 14 }}>
           {[
             "Compliance Check",
             "Wage Calculation",
             "ICS Calendar Export",
+            "CSV Spreadsheet Export",
             "Pattern Auto-fill",
-            "Local Storage Cache",
+            "Offline First PWA",
             "Interactive Calendar Grid",
           ].map((tag) => (
             <span
               key={tag}
               style={{
-                padding: "4px 12px",
+                padding: "4px 10px",
                 borderRadius: 20,
-                background: t.tag || "rgba(127,127,127,0.1)",
+                background: "rgba(100,116,139,0.1)",
                 color: t.sub,
                 fontSize: 11,
                 fontWeight: 700,

@@ -68,6 +68,20 @@ export default function RosterView({
   // Compute conflicts to display inline in the table
   const warnings = useMemo(() => checkConflicts(roster, shifts), [roster, shifts]);
 
+  // Pre-index warning lookup for O(1) row queries
+  const warningMap = useMemo(() => {
+    const map = new Map();
+    warnings.forEach((w) => map.set(w.date, w));
+    return map;
+  }, [warnings]);
+
+  // Pre-index roster original index for O(1) mutations
+  const rosterIndexMap = useMemo(() => {
+    const map = new Map();
+    roster.forEach((r, idx) => map.set(r.date, idx));
+    return map;
+  }, [roster]);
+
   const FILTERS = [
     { id: "all", label: "All Days", count: roster.length },
     { id: "work", label: "Work Shifts", count: roster.filter((r) => r.shift && r.shift !== "F").length },
@@ -91,7 +105,7 @@ export default function RosterView({
             Master Roster
           </div>
           <div style={{ fontSize: 13, color: t.sub, marginTop: 5 }}>
-            {workCount} shifts · {totalH.toFixed(1)} hours planned · ₹{estimatedEarnings.toLocaleString("en-IN")} estimated
+            {workCount} shifts · {totalH.toFixed(1)} hours planned · ₹{Math.round(estimatedEarnings).toLocaleString("en-IN")} estimated
           </div>
         </div>
         {roster.length > 0 && (
@@ -442,20 +456,20 @@ export default function RosterView({
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((r, idx) => {
-                    const origIdx = roster.indexOf(r);
+                  {filtered.map((r) => {
+                    const origIdx = rosterIndexMap.get(r.date) ?? -1;
                     const sh = shifts.find((s) => s.code === r.shift);
                     const ov = isON(r.startTime, r.endTime);
                     const hrs = calcHrs(r.startTime, r.endTime);
                     const isOff = r.shift === "F";
                     const isWeekend = [0, 6].includes(new Date(r.date + "T00:00:00").getDay());
 
-                    // Find if there is a warning for this specific row
-                    const rowWarning = warnings.find((w) => w.date === r.date);
+                    // O(1) Warning lookup
+                    const rowWarning = warningMap.get(r.date);
 
                     return (
                       <tr
-                        key={idx}
+                        key={r.date}
                         className="roster-row row-hover"
                         style={{
                           borderBottom: `1px solid ${t.tBdr}`,
@@ -723,7 +737,7 @@ export default function RosterView({
               <div style={{ width: 1, height: 28, background: t.tBdr }} />
               <div>
                 <span style={{ fontSize: 10, color: t.sub, textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.5 }}>Est. Earnings</span>
-                <div style={{ fontSize: 16, fontWeight: 800, color: "#10B981" }} className="sora">₹{estimatedEarnings.toLocaleString("en-IN")}</div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: "#10B981" }} className="sora">₹{Math.round(estimatedEarnings).toLocaleString("en-IN")}</div>
               </div>
               <div style={{ width: 1, height: 28, background: t.tBdr }} />
               <div>

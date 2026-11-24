@@ -1,113 +1,131 @@
+import { useEffect } from "react";
 import { Sparkles, MousePointerClick, Users, X } from "lucide-react";
 
 export default function WelcomeModal({ t, onClose }) {
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="welcome-modal-title"
+      onClick={onClose}
       style={{
         position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100%",
-        height: "100%",
+        inset: 0,
         background: t.is ? "rgba(0,0,0,0.8)" : "rgba(10,22,40,0.5)",
-        backdropFilter: "blur(4px)",
+        backdropFilter: "blur(6px)",
         zIndex: 9999,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: 20,
+        padding: 16,
       }}
     >
       <div
-        className="anim-scale-up"
+        className="anim-scale"
+        onClick={(e) => e.stopPropagation()}
         style={{
           background: t.card,
           border: `1px solid ${t.cardBdr}`,
           borderRadius: 24,
-          padding: "32px 24px 24px",
+          padding: "28px 24px 20px",
           width: "100%",
           maxWidth: 420,
+          maxHeight: "calc(100dvh - 32px)",
+          overflowY: "auto",
           position: "relative",
-          boxShadow: "0 24px 60px rgba(0,0,0,0.15)",
+          boxShadow: "0 24px 60px rgba(0,0,0,0.25)",
         }}
       >
         <button
           onClick={onClose}
+          aria-label="Close welcome guide"
           style={{
             position: "absolute",
-            top: 16,
-            right: 16,
+            top: 14,
+            right: 14,
             background: "transparent",
             border: "none",
             color: t.sub,
             cursor: "pointer",
-            padding: 8,
+            width: 32,
+            height: 32,
             borderRadius: "50%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
           }}
           className="row-hover"
         >
-          <X size={20} />
+          <X size={18} />
         </button>
 
-        <div style={{ textAlign: "center", marginBottom: 24 }}>
+        <div style={{ textAlign: "center", marginBottom: 20 }}>
           <div
             style={{
-              width: 56,
-              height: 56,
+              width: 52,
+              height: 52,
               background: "linear-gradient(135deg, #2563EB 0%, #7C3AED 100%)",
               borderRadius: 16,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              margin: "0 auto 16px",
+              margin: "0 auto 12px",
               color: "#fff",
-              boxShadow: "0 8px 24px rgba(37,99,235,0.3)",
+              boxShadow: "0 8px 20px rgba(37,99,235,0.3)",
             }}
           >
-            <Sparkles size={28} />
+            <Sparkles size={26} />
           </div>
-          <h2 className="sora" style={{ margin: 0, fontSize: 24, fontWeight: 800, color: t.text, letterSpacing: "-0.5px" }}>
+          <h2 id="welcome-modal-title" className="sora" style={{ margin: 0, fontSize: 22, fontWeight: 800, color: t.text, letterSpacing: "-0.4px" }}>
             Welcome to SkyRoster!
           </h2>
-          <p style={{ margin: "8px 0 0", fontSize: 14, color: t.sub, lineHeight: 1.5 }}>
-            You're seconds away from a smarter schedule. Here are three quick tips to get you started:
+          <p style={{ margin: "6px 0 0", fontSize: 13, color: t.sub, lineHeight: 1.5 }}>
+            Plan, visualize, and sync your shifts effortlessly. Here is how to get the most out of your schedule:
           </p>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 32 }}>
-          <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-            <div style={{ padding: 10, background: t.accentSoft, color: t.accent, borderRadius: 12 }}>
-              <Sparkles size={20} />
+        <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 24 }}>
+          <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+            <div style={{ padding: 8, background: "rgba(37,99,235,0.1)", color: "#2563EB", borderRadius: 10, flexShrink: 0 }}>
+              <Sparkles size={18} />
             </div>
             <div>
-              <h4 style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: t.text }}>1. Auto-Generate Patterns</h4>
-              <p style={{ margin: 0, fontSize: 13, color: t.sub, lineHeight: 1.4 }}>
-                Go to the Roster tab, select your dates, and use templates like "4-on/4-off" to fill your schedule instantly.
-              </p>
+              <div style={{ fontSize: 14, fontWeight: 700, color: t.text }}>Smart Pattern Auto-Fill</div>
+              <div style={{ fontSize: 12, color: t.sub, marginTop: 2, lineHeight: 1.4 }}>
+                Enter a few shifts (e.g. 4 on, 4 off) and click <strong>Auto-Fill</strong> in Master Roster to project your entire schedule forward instantly.
+              </div>
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-            <div style={{ padding: 10, background: t.accentSoft, color: t.accent, borderRadius: 12 }}>
-              <MousePointerClick size={20} />
+          <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+            <div style={{ padding: 8, background: "rgba(124,58,237,0.1)", color: "#7C3AED", borderRadius: 10, flexShrink: 0 }}>
+              <MousePointerClick size={18} />
             </div>
             <div>
-              <h4 style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: t.text }}>2. Click-to-Cycle</h4>
-              <p style={{ margin: 0, fontSize: 13, color: t.sub, lineHeight: 1.4 }}>
-                In the Roster grid, click the ↻ button on any row to instantly cycle between shift types (Morning, Night, Off, etc).
-              </p>
+              <div style={{ fontSize: 14, fontWeight: 700, color: t.text }}>Calendar View & Quick Edits</div>
+              <div style={{ fontSize: 12, color: t.sub, marginTop: 2, lineHeight: 1.4 }}>
+                Switch to the <strong>Calendar</strong> tab to visualize your month or tap any date to customize hours, add notes, and inspect fatigue turnaround.
+              </div>
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-            <div style={{ padding: 10, background: t.accentSoft, color: t.accent, borderRadius: 12 }}>
-              <Users size={20} />
+          <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+            <div style={{ padding: 8, background: "rgba(5,150,105,0.1)", color: "#059669", borderRadius: 10, flexShrink: 0 }}>
+              <Users size={18} />
             </div>
             <div>
-              <h4 style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: t.text }}>3. Team Sync</h4>
-              <p style={{ margin: 0, fontSize: 13, color: t.sub, lineHeight: 1.4 }}>
-                Sign in with Google, create a Team, and share the code with colleagues to view everyone's shifts overlaid on your calendar.
-              </p>
+              <div style={{ fontSize: 14, fontWeight: 700, color: t.text }}>Team Sync & Collaboration</div>
+              <div style={{ fontSize: 12, color: t.sub, marginTop: 2, lineHeight: 1.4 }}>
+                Create or join a team with an 8-character code to view your coworkers' shifts alongside your own in real time.
+              </div>
             </div>
           </div>
         </div>
@@ -116,26 +134,15 @@ export default function WelcomeModal({ t, onClose }) {
           onClick={onClose}
           style={{
             width: "100%",
-            padding: "14px",
-            background: "linear-gradient(to right, #2563EB, #1D4ED8)",
+            padding: "12px",
+            borderRadius: 12,
+            background: "linear-gradient(135deg, #2563EB 0%, #7C3AED 100%)",
             color: "#fff",
             border: "none",
-            borderRadius: 14,
-            fontSize: 15,
-            fontWeight: 700,
+            fontSize: 14,
+            fontWeight: 800,
             cursor: "pointer",
-            fontFamily: "'DM Sans', sans-serif",
             boxShadow: "0 4px 14px rgba(37,99,235,0.3)",
-            transition: "transform 0.1s, box-shadow 0.1s",
-          }}
-          onMouseDown={(e) => {
-            e.currentTarget.style.transform = "scale(0.98)";
-          }}
-          onMouseUp={(e) => {
-            e.currentTarget.style.transform = "scale(1)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "scale(1)";
           }}
         >
           Let's Go!
