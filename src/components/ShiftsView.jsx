@@ -1,48 +1,86 @@
 import { useState } from "react";
 import { Plus, Clock } from "lucide-react";
 import { isON } from "../utils/rosterHelpers";
+import toast from "react-hot-toast";
 
-export default function ShiftsView({ t, shifts, setShifts }) {
+export default function ShiftsView({ t, shifts, setShifts, roster = [], syncShiftTemplateChange }) {
   const BLANK = { code: "", title: "", start: "", end: "", color: "#2563EB", isOff: false, hourlyRate: "" };
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState(BLANK);
+  const [formError, setFormError] = useState("");
 
   const openAdd = () => {
     setForm(BLANK);
     setEditId(null);
+    setFormError("");
     setShowForm(true);
   };
-  
+
   const openEdit = (sh) => {
     setForm({ ...sh, hourlyRate: sh.hourlyRate !== undefined ? sh.hourlyRate : "" });
     setEditId(sh.id);
+    setFormError("");
     setShowForm(true);
   };
-  
+
   const cancel = () => {
     setShowForm(false);
     setEditId(null);
+    setFormError("");
   };
-  
+
   const save = () => {
-    if (!form.code.trim() || !form.title.trim()) return;
-    
-    // Clean hourly rate
-    const cleanedRate = form.isOff ? 0 : Number(form.hourlyRate) || 0;
-    const finalForm = { ...form, hourlyRate: cleanedRate };
+    const cleanCode = form.code.trim().toUpperCase();
+    const cleanTitle = form.title.trim();
+
+    if (!cleanCode || !cleanTitle) {
+      setFormError("Shift code and title are required.");
+      return;
+    }
+
+    if (shifts.some((s) => s.id !== editId && s.code.toUpperCase() === cleanCode)) {
+      setFormError(`Shift code "${cleanCode}" already exists.`);
+      return;
+    }
+
+    if (!form.isOff && (!form.start || !form.end)) {
+      setFormError("Start and end times are required for working shifts.");
+      return;
+    }
+
+    const cleanedRate = form.isOff ? 0 : Math.max(0, Number(form.hourlyRate) || 0);
+    const finalForm = {
+      ...form,
+      code: cleanCode,
+      title: cleanTitle,
+      start: form.isOff ? "" : form.start,
+      end: form.isOff ? "" : form.end,
+      hourlyRate: cleanedRate,
+    };
 
     if (editId) {
+      const oldShift = shifts.find((s) => s.id === editId);
       setShifts(shifts.map((s) => (s.id === editId ? { ...finalForm, id: editId } : s)));
+      if (oldShift && syncShiftTemplateChange) {
+        syncShiftTemplateChange(oldShift.code, finalForm);
+      }
+      toast.success(`Updated ${cleanCode} shift template.`);
     } else {
       setShifts([...shifts, { ...finalForm, id: "s" + Date.now() }]);
+      toast.success(`Added ${cleanCode} shift template.`);
     }
     cancel();
   };
 
-  const del = (id) => {
-    if (!window.confirm("Delete this shift?")) return;
-    setShifts(shifts.filter((s) => s.id !== id));
+  const del = (sh) => {
+    const inUseCount = roster.filter((r) => r.shift === sh.code).length;
+    const msg =
+      inUseCount > 0
+        ? `"${sh.code}" is currently assigned to ${inUseCount} day(s) in your roster. Delete this shift template anyway?`
+        : `Delete "${sh.code} — ${sh.title}"?`;
+    if (!window.confirm(msg)) return;
+    setShifts(shifts.filter((s) => s.id !== sh.id));
   };
 
   return (
@@ -97,8 +135,12 @@ export default function ShiftsView({ t, shifts, setShifts }) {
             <label style={{ display: "block" }}>
               <span style={lbl(t)}>Code</span>
               <input
+                maxLength={6}
                 value={form.code}
-                onChange={(e) => setForm((p) => ({ ...p, code: e.target.value }))}
+                onChange={(e) => {
+                  setFormError("");
+                  setForm((p) => ({ ...p, code: e.target.value }));
+                }}
                 placeholder="e.g. M1"
                 style={inputStyle(t)}
               />
@@ -107,7 +149,10 @@ export default function ShiftsView({ t, shifts, setShifts }) {
               <span style={lbl(t)}>Title</span>
               <input
                 value={form.title}
-                onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
+                onChange={(e) => {
+                  setFormError("");
+                  setForm((p) => ({ ...p, title: e.target.value }));
+                }}
                 placeholder="e.g. Morning Shift"
                 style={inputStyle(t)}
               />
@@ -135,7 +180,10 @@ export default function ShiftsView({ t, shifts, setShifts }) {
               <input
                 type="time"
                 value={form.start}
-                onChange={(e) => setForm((p) => ({ ...p, start: e.target.value }))}
+                onChange={(e) => {
+                  setFormError("");
+                  setForm((p) => ({ ...p, start: e.target.value }));
+                }}
                 disabled={form.isOff}
                 style={{ ...inputStyle(t), opacity: form.isOff ? 0.4 : 1 }}
               />
@@ -145,28 +193,29 @@ export default function ShiftsView({ t, shifts, setShifts }) {
               <input
                 type="time"
                 value={form.end}
-                onChange={(e) => setForm((p) => ({ ...p, end: e.target.value }))}
+                onChange={(e) => {
+                  setFormError("");
+                  setForm((p) => ({ ...p, end: e.target.value }));
+                }}
                 disabled={form.isOff}
                 style={{ ...inputStyle(t), opacity: form.isOff ? 0.4 : 1 }}
               />
             </label>
-            
-            {/* Hourly Rate Input */}
+
             <label style={{ display: "block" }}>
               <span style={lbl(t)}>Hourly Rate (₹)</span>
-              <div style={{ position: "relative" }}>
-                <input
-                  type="number"
-                  value={form.hourlyRate}
-                  disabled={form.isOff}
-                  onChange={(e) => setForm((p) => ({ ...p, hourlyRate: e.target.value }))}
-                  placeholder="e.g. 200"
-                  style={{ ...inputStyle(t), opacity: form.isOff ? 0.4 : 1 }}
-                />
-              </div>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={form.hourlyRate}
+                disabled={form.isOff}
+                onChange={(e) => setForm((p) => ({ ...p, hourlyRate: e.target.value }))}
+                placeholder="e.g. 200"
+                style={{ ...inputStyle(t), opacity: form.isOff ? 0.4 : 1 }}
+              />
             </label>
 
-            {/* Checkbox */}
             <div style={{ display: "flex", alignItems: "flex-end", paddingBottom: 2 }}>
               <label
                 style={{
@@ -184,16 +233,18 @@ export default function ShiftsView({ t, shifts, setShifts }) {
                 <input
                   type="checkbox"
                   checked={form.isOff}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, isOff: e.target.checked, start: "", end: "", hourlyRate: "" }))
-                  }
+                  onChange={(e) => {
+                    setFormError("");
+                    setForm((p) => ({ ...p, isOff: e.target.checked, start: "", end: "", hourlyRate: "" }));
+                  }}
                   style={{ width: 16, height: 16, accentColor: "#2563EB", cursor: "pointer" }}
                 />
                 <span style={{ fontSize: 13, fontWeight: 600, color: t.text }}>Off / Rest Day</span>
               </label>
             </div>
           </div>
-          {form.start && form.end && isON(form.start, form.end) && (
+
+          {!form.isOff && form.start && form.end && isON(form.start, form.end) && (
             <div
               style={{
                 marginTop: 16,
@@ -209,6 +260,13 @@ export default function ShiftsView({ t, shifts, setShifts }) {
               🌙 Overnight shift detected — end date auto-adjusts to next day on export.
             </div>
           )}
+
+          {formError && (
+            <div style={{ marginTop: 14, fontSize: 12, color: "#EF4444", fontWeight: 600 }}>
+              ⚠ {formError}
+            </div>
+          )}
+
           <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
             <button
               onClick={save}
@@ -246,103 +304,104 @@ export default function ShiftsView({ t, shifts, setShifts }) {
         </div>
       )}
 
-      {/* Shifts Templates Cards */}
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {Array.isArray(shifts) && shifts.map((sh) => (
-          <div
-            key={sh.id}
-            className="card-lift"
-            style={{
-              background: t.card,
-              border: `1px solid ${t.cardBdr}`,
-              borderRadius: 18,
-              padding: "16px 22px",
-              display: "flex",
-              alignItems: "center",
-              gap: 18,
-              boxShadow: "0 2px 10px rgba(0,0,0,.04)",
-            }}
-          >
+        {Array.isArray(shifts) &&
+          shifts.map((sh) => (
             <div
+              key={sh.id}
+              className="card-lift"
               style={{
-                width: 50,
-                height: 50,
-                borderRadius: 14,
-                background: sh.color,
+                background: t.card,
+                border: `1px solid ${t.cardBdr}`,
+                borderRadius: 18,
+                padding: "16px 20px",
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "center",
-                fontFamily: "'Sora',sans-serif",
-                fontWeight: 900,
-                fontSize: 16,
-                color: "#fff",
-                boxShadow: `0 6px 16px ${sh.color}45`,
-                flexShrink: 0,
+                flexWrap: "wrap",
+                gap: 14,
+                boxShadow: "0 2px 10px rgba(0,0,0,.04)",
               }}
             >
-              {sh.code}
-            </div>
-            
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: t.text }}>{sh.title}</div>
-              <div style={{ fontSize: 12, color: t.sub, marginTop: 3, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                <span>
-                  {sh.isOff ? (
-                    "Rest / Off Day"
-                  ) : (
-                    <>
-                      <Clock size={11} style={{ display: "inline", marginRight: 4, verticalAlign: "middle" }} />
-                      {sh.start} → {sh.end}
-                      {isON(sh.start, sh.end) && (
-                        <span style={{ color: "#D97706", fontWeight: 700 }}> · 🌙 Overnight</span>
-                      )}
-                    </>
-                  )}
-                </span>
-                {!sh.isOff && (
-                  <span style={{ color: "#10B981", fontWeight: 600 }}>
-                    ₹{(Number(sh.hourlyRate) || 0)}/hr
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 14,
+                  background: sh.color,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontFamily: "'Sora',sans-serif",
+                  fontWeight: 900,
+                  fontSize: 15,
+                  color: "#fff",
+                  boxShadow: `0 6px 16px ${sh.color}45`,
+                  flexShrink: 0,
+                }}
+              >
+                {sh.code}
+              </div>
+
+              <div style={{ flex: "1 1 180px", minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 14, color: t.text }}>{sh.title}</div>
+                <div style={{ fontSize: 12, color: t.sub, marginTop: 3, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                  <span>
+                    {sh.isOff ? (
+                      "Rest / Off Day"
+                    ) : (
+                      <>
+                        <Clock size={11} style={{ display: "inline", marginRight: 4, verticalAlign: "middle" }} />
+                        {sh.start} → {sh.end}
+                        {isON(sh.start, sh.end) && (
+                          <span style={{ color: "#D97706", fontWeight: 700 }}> · 🌙 Overnight</span>
+                        )}
+                      </>
+                    )}
                   </span>
-                )}
+                  {!sh.isOff && (
+                    <span style={{ color: "#10B981", fontWeight: 600 }}>
+                      ₹{Number(sh.hourlyRate) || 0}/hr
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 8, flexShrink: 0, marginLeft: "auto" }}>
+                <button
+                  onClick={() => openEdit(sh)}
+                  style={{
+                    padding: "7px 14px",
+                    borderRadius: 9,
+                    border: "none",
+                    cursor: "pointer",
+                    background: t.is ? "rgba(37,99,235,.15)" : "#EFF6FF",
+                    color: "#2563EB",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    fontFamily: "'DM Sans',sans-serif",
+                  }}
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => del(sh)}
+                  style={{
+                    padding: "7px 14px",
+                    borderRadius: 9,
+                    border: "none",
+                    cursor: "pointer",
+                    background: t.is ? "rgba(239,68,68,.1)" : "#FEE2E2",
+                    color: "#EF4444",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    fontFamily: "'DM Sans',sans-serif",
+                  }}
+                >
+                  Delete
+                </button>
               </div>
             </div>
-
-            <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-              <button
-                onClick={() => openEdit(sh)}
-                style={{
-                  padding: "7px 14px",
-                  borderRadius: 9,
-                  border: "none",
-                  cursor: "pointer",
-                  background: t.is ? "rgba(37,99,235,.15)" : "#EFF6FF",
-                  color: "#2563EB",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  fontFamily: "'DM Sans',sans-serif",
-                }}
-              >
-                Edit
-              </button>
-              <button
-                onClick={() => del(sh.id)}
-                style={{
-                  padding: "7px 14px",
-                  borderRadius: 9,
-                  border: "none",
-                  cursor: "pointer",
-                  background: t.is ? "rgba(239,68,68,.1)" : "#FEE2E2",
-                  color: "#EF4444",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  fontFamily: "'DM Sans',sans-serif",
-                }}
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        ))}
+          ))}
       </div>
     </div>
   );
@@ -368,4 +427,5 @@ const inputStyle = (t) => ({
   fontFamily: "'DM Sans',sans-serif",
   outline: "none",
   marginTop: 6,
+  boxSizing: "border-box",
 });

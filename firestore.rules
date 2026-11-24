@@ -1,32 +1,37 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Teams collection: accessible by team code, but protected against enumeration & wiping
+
+    function isValidTeamId(id) {
+      return id.matches('^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{8}$');
+    }
+
     match /teams/{teamId} {
-      // Allow fetching a specific team by ID, but disallow listing all teams in the collection
       allow get: if true;
       allow list: if false;
 
-      // Allow creating team with valid structure
-      allow create: if request.resource.data.name is string
+      allow create: if isValidTeamId(teamId)
+        && request.resource.data.keys().hasOnly(['name', 'createdAt', 'members'])
+        && request.resource.data.name is string
         && request.resource.data.name.size() > 0
         && request.resource.data.name.size() <= 50
+        && request.resource.data.createdAt is int
         && request.resource.data.members is map
         && request.resource.data.members.size() >= 1
         && request.resource.data.members.size() <= 30;
 
-      // Allow updating team data, but prevent wiping the members map
-      allow update: if request.resource.data.name is string
-        && request.resource.data.name.size() <= 50
+      allow update: if request.resource.data.keys().hasOnly(['name', 'createdAt', 'members'])
+        && request.resource.data.name == resource.data.name
+        && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.members is map
         && request.resource.data.members.size() >= 1
-        && request.resource.data.members.size() <= 30;
+        && request.resource.data.members.size() <= 30
+        && request.resource.data.members.diff(resource.data.members).affectedKeys().size() <= 1
+        && request.resource.data.members.diff(resource.data.members).removedKeys().size() == 0;
 
-      // Prevent malicious destruction of team documents
       allow delete: if false;
     }
 
-    // User personal cloud backups: strictly owner-only
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }

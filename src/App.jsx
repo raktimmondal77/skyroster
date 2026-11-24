@@ -12,10 +12,9 @@ import { subscribeToTeam, syncMyRoster } from "./utils/teamSync.js";
 import { auth } from "./utils/firebase.js";
 import { onAuthStateChanged } from "firebase/auth";
 import { signInWithGoogle, logoutUser, loadRosterFromCloud, saveRosterToCloud } from "./utils/authSync.js";
-import { buildICS } from "./utils/rosterHelpers.js";
+import { buildICS, fmtDate } from "./utils/rosterHelpers.js";
 import { useAppStore, DEFAULT_SHIFTS } from "./store/useAppStore.js";
 
-// Lazy-loaded Views
 const DashboardView = lazy(() => import("./components/DashboardView.jsx"));
 const CalendarView  = lazy(() => import("./components/CalendarView.jsx"));
 const RosterView    = lazy(() => import("./components/RosterView.jsx"));
@@ -25,13 +24,11 @@ const SettingsView  = lazy(() => import("./components/SettingsView.jsx"));
 const LandingView   = lazy(() => import("./components/LandingView.jsx"));
 const TeamView      = lazy(() => import("./components/TeamView.jsx"));
 
-// Lazy-loaded Modals
 const DonateModal    = lazy(() => import("./components/DonateModal.jsx"));
 const SuccessModal   = lazy(() => import("./components/SuccessModal.jsx"));
 const ShortcutsModal = lazy(() => import("./components/ShortcutsModal.jsx"));
 const WelcomeModal   = lazy(() => import("./components/WelcomeModal.jsx"));
 
-/* ────────── THEME CONFIG ────────── */
 const T = (dark) => ({
   is: dark,
   bg: dark ? "#070D1A" : "#EEF2FB",
@@ -41,7 +38,7 @@ const T = (dark) => ({
   cardBdr: dark ? "#1C2740" : "#E8EDF7",
   cardHov: dark ? "#121C32" : "#F6F9FF",
   text: dark ? "#EAF0FF" : "#0A1628",
-  sub: dark ? "#7488AE" : "#5A6E92",
+  sub: dark ? "#8296BC" : "#5A6E92",
   inputBg: dark ? "#060C18" : "#FFFFFF",
   inputBdr: dark ? "#26314F" : "#D0D9EA",
   inputTxt: dark ? "#EAF0FF" : "#0A1628",
@@ -87,6 +84,8 @@ function AppLayout({ t, downloadICS, onOpenDonate }) {
   const setShowDonateModal = useAppStore((s) => s.setShowDonateModal);
   const showSuccessModal = useAppStore((s) => s.showSuccessModal);
   const setShowSuccessModal = useAppStore((s) => s.setShowSuccessModal);
+  const hasSeenWelcome = useAppStore((s) => s.hasSeenWelcome);
+  const completeWelcome = useAppStore((s) => s.completeWelcome);
   const bmcUser = useAppStore((s) => s.bmcUser);
   const paypalUser = useAppStore((s) => s.paypalUser);
   const upiId = useAppStore((s) => s.upiId);
@@ -94,6 +93,7 @@ function AppLayout({ t, downloadICS, onOpenDonate }) {
   const updateEntry = useAppStore((s) => s.updateEntry);
   const applyDetectedPattern = useAppStore((s) => s.applyDetectedPattern);
   const detectPattern = useAppStore((s) => s.detectPattern);
+  const syncShiftTemplateChange = useAppStore((s) => s.syncShiftTemplateChange);
   const syncStatus = useAppStore((s) => s.syncStatus);
 
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -111,7 +111,6 @@ function AppLayout({ t, downloadICS, onOpenDonate }) {
     }
   }, [navigate]);
 
-  // Keyboard navigation shortcuts
   useHotkeys("g+d", () => handleSetView("dashboard"), { preventDefault: true });
   useHotkeys("g+r", () => handleSetView("roster"), { preventDefault: true });
   useHotkeys("g+c", () => handleSetView("calendar"), { preventDefault: true });
@@ -132,7 +131,6 @@ function AppLayout({ t, downloadICS, onOpenDonate }) {
         transition: "background .25s",
       }}
     >
-      {/* Skip link for keyboard accessibility */}
       <a
         href="#main-content"
         style={{
@@ -168,8 +166,15 @@ function AppLayout({ t, downloadICS, onOpenDonate }) {
         className="main-content"
         style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}
       >
-        <style>{`@media(min-width:768px){.main-content{margin-left:248px}}`}</style>
-        
+        <style>{`
+          .app-main-area { padding: 18px 16px calc(92px + var(--safe-bottom, 0px)); }
+          @media(min-width:768px){
+            .main-content{margin-left:248px}
+            .app-main-area { padding: 24px 28px; }
+            .mobile-bottom-nav { display: none !important; }
+          }
+        `}</style>
+
         <Header
           t={t}
           roster={roster}
@@ -180,7 +185,7 @@ function AppLayout({ t, downloadICS, onOpenDonate }) {
           syncStatus={syncStatus}
         />
 
-        <main id="main-content" tabIndex={-1} style={{ flex: 1, padding: "24px 28px", overflowY: "auto", position: "relative" }}>
+        <main id="main-content" className="app-main-area" tabIndex={-1} style={{ flex: 1, overflowY: "auto", position: "relative" }}>
           <ErrorBoundary key={location.pathname}>
             <Suspense fallback={<RouteLoader />}>
               <Routes>
@@ -198,6 +203,7 @@ function AppLayout({ t, downloadICS, onOpenDonate }) {
                       updateEntry={updateEntry}
                       teamData={teamData}
                       userName={userName}
+                      setView={handleSetView}
                     />
                   }
                 />
@@ -236,7 +242,15 @@ function AppLayout({ t, downloadICS, onOpenDonate }) {
                 />
                 <Route
                   path="/shifts"
-                  element={<ShiftsView t={t} shifts={shifts} setShifts={setShifts} />}
+                  element={
+                    <ShiftsView
+                      t={t}
+                      shifts={shifts}
+                      setShifts={setShifts}
+                      roster={roster}
+                      syncShiftTemplateChange={syncShiftTemplateChange}
+                    />
+                  }
                 />
                 <Route
                   path="/export"
@@ -273,8 +287,8 @@ function AppLayout({ t, downloadICS, onOpenDonate }) {
           bottom: 0,
           left: 0,
           right: 0,
-          height: "calc(58px + var(--safe-bottom))",
-          paddingBottom: "var(--safe-bottom)",
+          height: "calc(60px + var(--safe-bottom, 0px))",
+          paddingBottom: "var(--safe-bottom, 0px)",
           background: t.card,
           borderTop: `1px solid ${t.cardBdr}`,
           display: "flex",
@@ -284,11 +298,6 @@ function AppLayout({ t, downloadICS, onOpenDonate }) {
           backdropFilter: "blur(12px)",
         }}
       >
-        <style>{`
-          @media(min-width: 768px) {
-            .mobile-bottom-nav { display: none !important; }
-          }
-        `}</style>
         {[
           { id: "dashboard", label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
           { id: "roster", label: "Roster", path: "/roster", icon: ClipboardList },
@@ -312,10 +321,10 @@ function AppLayout({ t, downloadICS, onOpenDonate }) {
                 gap: 3,
                 color: active ? "#2563EB" : t.sub,
                 cursor: "pointer",
-                padding: "6px 12px",
+                padding: "6px 10px",
                 fontFamily: "'DM Sans', sans-serif",
-                fontSize: 10,
-                fontWeight: active ? 800 : 500,
+                fontSize: 11,
+                fontWeight: active ? 800 : 600,
               }}
             >
               <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />
@@ -346,6 +355,9 @@ function AppLayout({ t, downloadICS, onOpenDonate }) {
           isOpen={showShortcuts}
           onClose={() => setShowShortcuts(false)}
         />
+        {!hasSeenWelcome && (
+          <WelcomeModal t={t} onClose={completeWelcome} />
+        )}
       </Suspense>
     </div>
   );
@@ -381,14 +393,9 @@ function MainApp() {
 
   const t = useMemo(() => T(dark), [dark]);
 
-  // Online / Offline Status Awareness
   useEffect(() => {
-    const handleOnline = () => {
-      toast.success("Back online!", { id: "online-status" });
-    };
-    const handleOffline = () => {
-      toast("You are currently offline. Edits save locally.", { icon: "📶", id: "online-status" });
-    };
+    const handleOnline = () => toast.success("Back online!", { id: "online-status" });
+    const handleOffline = () => toast("You are currently offline. Edits save locally.", { icon: "📶", id: "online-status" });
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
     return () => {
@@ -397,7 +404,6 @@ function MainApp() {
     };
   }, []);
 
-  // Firebase Auth listener with offline safety timeout (NO location.pathname dependency!)
   useEffect(() => {
     if (!auth) {
       setTimeout(() => setAuthLoading(false), 0);
@@ -417,7 +423,8 @@ function MainApp() {
       if (currentUser) {
         try {
           const cloudRoster = await loadRosterFromCloud(currentUser.uid);
-          if (cloudRoster && cloudRoster.length > 0) {
+          const localRoster = useAppStore.getState().roster;
+          if (Array.isArray(cloudRoster) && cloudRoster.length > 0 && localRoster.length === 0) {
             setRoster(cloudRoster);
           }
         } catch (e) {
@@ -437,28 +444,24 @@ function MainApp() {
     };
   }, [setAuthLoading, setRoster, setUser]);
 
-  // Team Real-time Subscription
   useEffect(() => {
-    if (!teamId) {
-      setTeamData(null);
-      return;
-    }
-    return subscribeToTeam(teamId, setTeamData);
+    setTeamData(null);
+    if (!teamId) return;
+    return subscribeToTeam(teamId, setTeamData, () => {
+      toast.error("Could not sync team schedule. Check your team code or connection.", { id: "team-sync-err" });
+    });
   }, [teamId, setTeamData]);
 
-  // Self-heal corrupted shifts
   useEffect(() => {
-    if (!Array.isArray(shifts)) {
+    if (!Array.isArray(shifts) || shifts.length === 0) {
       setShifts(DEFAULT_SHIFTS);
     }
   }, [shifts, setShifts]);
 
-  // Debounced Cloud & Team Sync
   const syncTimerRef = useRef(null);
   const isInitialMount = useRef(true);
 
   useEffect(() => {
-    // Skip initial false-dirty alert on mount
     if (isInitialMount.current) {
       isInitialMount.current = false;
       return;
@@ -469,21 +472,19 @@ function MainApp() {
       return;
     }
 
-    if (roster.length > 0) setSyncStatus("unsaved");
-
+    setSyncStatus("unsaved");
     if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
 
     syncTimerRef.current = setTimeout(async () => {
       setSyncStatus("syncing");
       try {
         const promises = [];
-        if (teamId && userName && roster.length > 0) {
+        if (teamId && userName) {
           promises.push(syncMyRoster(teamId, userName, roster));
         }
-        if (user && roster.length > 0) {
+        if (user) {
           promises.push(saveRosterToCloud(user.uid, roster));
         }
-        
         if (promises.length > 0) {
           await Promise.all(promises);
         }
@@ -508,7 +509,6 @@ function MainApp() {
     setShowDonateModal(true);
   }, [setShowDonateModal]);
 
-  // Skip landing page if local roster exists
   useEffect(() => {
     if (!authLoading && roster.length > 0 && location.pathname === "/") {
       navigate("/dashboard", { replace: true });
@@ -516,7 +516,11 @@ function MainApp() {
   }, [roster, location.pathname, navigate, authLoading]);
 
   const triggerDownloadICS = useCallback(() => {
-    const assignedShifts = roster.filter((r) => r.shift && r.shift !== "F" && r.startTime);
+    const assignedShifts = roster.filter((r) => {
+      if (!r.shift || !r.startTime || !r.endTime) return false;
+      const sh = shifts.find((s) => s.code === r.shift);
+      return Boolean(sh && !sh.isOff);
+    });
     if (assignedShifts.length === 0) {
       toast.error("No active shifts to export. Schedule some shifts first!");
       return;
@@ -528,9 +532,9 @@ function MainApp() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `skyroster-${new Date().toISOString().slice(0, 10)}.ics`;
+      a.download = `skyroster-${fmtDate(new Date())}.ics`;
       a.click();
-      URL.revokeObjectURL(url);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
       setShowSuccessModal(true);
     } catch (e) {
       console.error(e);
@@ -540,7 +544,6 @@ function MainApp() {
 
   if (authLoading) return <AuthSplash dark={dark} />;
 
-  // Landing Page standalone route
   if (location.pathname === "/" || location.pathname === "/landing") {
     return (
       <div
@@ -580,10 +583,7 @@ function MainApp() {
             onOpenDonate={handleOpenDonateModal}
           />
           {!hasSeenWelcome && (
-            <WelcomeModal 
-              t={t} 
-              onClose={completeWelcome} 
-            />
+            <WelcomeModal t={t} onClose={completeWelcome} />
           )}
         </Suspense>
       </div>

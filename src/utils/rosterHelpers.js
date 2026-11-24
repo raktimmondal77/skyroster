@@ -52,7 +52,7 @@ export const fmtDayFull = (ds) =>
     month: "long",
   });
 
-/* RFC5545 text escaping */
+/* RFC 5545 text escaping */
 export const esc = (v = "") =>
   String(v)
     .replace(/\\/g, "\\\\")
@@ -61,18 +61,30 @@ export const esc = (v = "") =>
     .replace(/\r?\n/g, "\\n");
 
 /**
- * Folds lines to max 75 octets according to RFC 5545 §3.1
+ * Folds lines to max 75 UTF-8 octets according to RFC 5545 §3.1
  */
 export const foldLine = (line) => {
-  const MAX_LEN = 75;
-  if (line.length <= MAX_LEN) return line;
-  let result = "";
-  let cur = line;
-  while (cur.length > MAX_LEN) {
-    result += cur.slice(0, MAX_LEN) + "\r\n ";
-    cur = cur.slice(MAX_LEN);
+  const MAX_BYTES = 75;
+  const encoder = new TextEncoder();
+  if (encoder.encode(line).length <= MAX_BYTES) return line;
+
+  const chunks = [];
+  let current = "";
+  let currentBytes = 0;
+
+  for (const char of line) {
+    const charBytes = encoder.encode(char).length;
+    if (currentBytes + charBytes > MAX_BYTES) {
+      chunks.push(current);
+      current = " " + char;
+      currentBytes = 1 + charBytes;
+    } else {
+      current += char;
+      currentBytes += charBytes;
+    }
   }
-  return result + cur;
+  if (current) chunks.push(current);
+  return chunks.join("\r\n");
 };
 
 /**
@@ -92,15 +104,17 @@ export const isWorkShift = (shiftCode, shifts) => {
 };
 
 export const isRestDay = (shiftCode, shifts) => {
-  if (!shiftCode) return true;
+  if (!shiftCode) return false;
   const sh = (shifts || []).find((s) => s.code === shiftCode);
-  return !sh || Boolean(sh.isOff);
+  return Boolean(sh && sh.isOff);
 };
+
+export const isUnassigned = (shiftCode) => !shiftCode;
 
 export const isNightShift = (shiftCode, shifts, startTime, endTime) => {
   if (startTime && endTime && isON(startTime, endTime)) return true;
   const sh = (shifts || []).find((s) => s.code === shiftCode);
-  if (!sh) return false;
+  if (!sh || sh.isOff) return false;
   return sh.code === "N" || /night|nocturnal|graveyard/i.test(sh.title || "");
 };
 
@@ -110,26 +124,31 @@ export const buildICS = (roster, shifts) => {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//SkyRoster//Smart Shift Planner v4.0//EN",
+    "PRODID:-//SkyRoster//Smart Shift Planner v4.1//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "X-WR-CALNAME:SkyRoster Schedule",
   ];
 
-  roster.forEach((r, idx) => {
+  const dateSlotCounts = new Map();
+
+  roster.forEach((r) => {
     if (!r.shift) return;
     const sh = shifts.find((s) => s.code === r.shift);
     if (!sh || sh.isOff || !r.startTime || !r.endTime) return;
 
+    const slot = dateSlotCounts.get(r.date) || 0;
+    dateSlotCounts.set(r.date, slot + 1);
+
     const dtStart = toFloatingICS(r.date, r.startTime);
     let endDateStr = r.date;
-    if (isON(r.startTime, r.endTime)) {
+    if (isON(r.startTime, r.endTime, Boolean(sh.is24Hour))) {
       const d = new Date(r.date + "T00:00:00");
       d.setDate(d.getDate() + 1);
       endDateStr = fmtDate(d);
     }
     const dtEnd = toFloatingICS(endDateStr, r.endTime);
-    const uid = `${r.date}-${idx}-${r.shift}@skyroster.app`;
+    const uid = `${r.date}-slot${slot}@skyroster.app`;
 
     const eventLines = [
       "BEGIN:VEVENT",
@@ -155,37 +174,41 @@ export const buildICS = (roster, shifts) => {
 
 /* Team ICS Builder */
 export const buildTeamICS = (teamData, shifts = []) => {
+  if (!teamData || !teamData.members) return "";
   const nowStamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//SkyRoster//Smart Shift Planner v4.0//EN",
+    "PRODID:-//SkyRoster//Smart Shift Planner v4.1//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "X-WR-CALNAME:SkyRoster Team Schedule",
   ];
-  
-  if (!teamData || !teamData.members) return "";
-  
-  Object.keys(teamData.members).forEach(member => {
-    const roster = teamData.members[member];
-    if (!Array.isArray(roster)) return;
 
-    roster.forEach((r, idx) => {
+  Object.keys(teamData.members).forEach((member, memberIdx) => {
+    const memberRoster = teamData.members[member];
+    if (!Array.isArray(memberRoster)) return;
+
+    const dateSlotCounts = new Map();
+    const memberSlug = `${member.replace(/[^a-zA-Z0-9]/g, "") || "member"}-${memberIdx}`;
+
+    memberRoster.forEach((r) => {
       if (!r.shift || !r.startTime || !r.endTime) return;
       const sh = (shifts || []).find((s) => s.code === r.shift);
       if (sh && sh.isOff) return;
-      
+
+      const slot = dateSlotCounts.get(r.date) || 0;
+      dateSlotCounts.set(r.date, slot + 1);
+
       const dtStart = toFloatingICS(r.date, r.startTime);
       let endDateStr = r.date;
-      if (isON(r.startTime, r.endTime)) {
+      if (isON(r.startTime, r.endTime, Boolean(sh?.is24Hour))) {
         const d = new Date(r.date + "T00:00:00");
         d.setDate(d.getDate() + 1);
         endDateStr = fmtDate(d);
       }
       const dtEnd = toFloatingICS(endDateStr, r.endTime);
-      const memberSlug = member.replace(/[^a-zA-Z0-9]/g, '');
-      const uid = `${memberSlug}-${r.date}-${idx}-${r.shift}@skyroster.app`;
+      const uid = `${memberSlug}-${r.date}-slot${slot}@skyroster.app`;
 
       const eventLines = [
         "BEGIN:VEVENT",
@@ -203,7 +226,7 @@ export const buildTeamICS = (teamData, shifts = []) => {
       lines.push(...eventLines);
     });
   });
-  
+
   lines.push("END:VCALENDAR");
   return lines.map(foldLine).join("\r\n");
 };
@@ -216,7 +239,7 @@ export const calcEarnings = (roster, shifts) => {
     if (!r.shift) return;
     const sh = shifts.find((s) => s.code === r.shift);
     if (!sh || sh.isOff) return;
-    const hrs = calcHrs(r.startTime, r.endTime);
+    const hrs = calcHrs(r.startTime, r.endTime, Boolean(sh.is24Hour));
     const rate = Number(sh.hourlyRate) || 0;
     total += hrs * rate;
   });
@@ -228,14 +251,13 @@ export const checkConflicts = (roster, shifts) => {
   const warnings = [];
   if (!Array.isArray(roster) || roster.length < 2) return warnings;
 
-  // Sort roster by date
   const sorted = [...roster]
     .filter((r) => r && r.date)
-    .sort((a, b) => a.date.localeCompare(b.date));
+    .sort((a, b) => a.date.localeCompare(b.date) || (a.startTime || "").localeCompare(b.startTime || ""));
 
-  // 1. Fatigue check: consecutive calendar work days
   let consecutiveWorkDays = 0;
   let lastWorkDate = null;
+  let lastTimedWorkEntry = null;
 
   for (let i = 0; i < sorted.length; i++) {
     const entry = sorted[i];
@@ -252,8 +274,7 @@ export const checkConflicts = (roster, shifts) => {
 
         if (diffDays === 1) {
           consecutiveWorkDays++;
-        } else {
-          // Calendar gap resets the streak
+        } else if (diffDays > 1) {
           consecutiveWorkDays = 1;
         }
       }
@@ -266,44 +287,37 @@ export const checkConflicts = (roster, shifts) => {
           msg: `Fatigue Warning: working ${consecutiveWorkDays} consecutive days without a rest day.`,
         });
       }
-    } else {
+
+      if (entry.startTime && entry.endTime) {
+        if (lastTimedWorkEntry) {
+          const prevSh = (shifts || []).find((s) => s.code === lastTimedWorkEntry.shift);
+          const prevEnd = new Date(lastTimedWorkEntry.date + "T" + lastTimedWorkEntry.endTime + ":00");
+          if (isON(lastTimedWorkEntry.startTime, lastTimedWorkEntry.endTime, Boolean(prevSh?.is24Hour))) {
+            prevEnd.setDate(prevEnd.getDate() + 1);
+          }
+
+          const currStart = new Date(entry.date + "T" + entry.startTime + ":00");
+          const restHrs = (currStart.getTime() - prevEnd.getTime()) / (1000 * 60 * 60);
+
+          if (restHrs < 0) {
+            warnings.push({
+              type: "collision",
+              date: entry.date,
+              msg: `Shift overlap conflict: ${entry.shift} on ${entry.date} starts ${Math.abs(restHrs).toFixed(1)}h before previous shift ends!`,
+            });
+          } else if (restHrs < 11) {
+            warnings.push({
+              type: "rest",
+              date: entry.date,
+              msg: `Short turnaround rest: Only ${restHrs.toFixed(1)}h rest between ${lastTimedWorkEntry.shift} (${lastTimedWorkEntry.endTime}) and ${entry.shift} (${entry.startTime}).`,
+            });
+          }
+        }
+        lastTimedWorkEntry = entry;
+      }
+    } else if (sh && sh.isOff) {
       consecutiveWorkDays = 0;
       lastWorkDate = null;
-    }
-
-    // 2. Short Rest & Collision check (turnaround check)
-    if (i < sorted.length - 1) {
-      const nextEntry = sorted[i + 1];
-      const nextSh = (shifts || []).find((s) => s.code === nextEntry.shift);
-      
-      const currentIsWork = isWork && entry.startTime && entry.endTime;
-      const nextIsWork = nextEntry.shift && nextSh && !nextSh.isOff && nextEntry.startTime && nextEntry.endTime;
-
-      if (currentIsWork && nextIsWork) {
-        const currentEnd = new Date(entry.date + "T" + entry.endTime + ":00");
-        if (isON(entry.startTime, entry.endTime)) {
-          currentEnd.setDate(currentEnd.getDate() + 1);
-        }
-
-        const nextStart = new Date(nextEntry.date + "T" + nextEntry.startTime + ":00");
-        const restHrs = (nextStart.getTime() - currentEnd.getTime()) / (1000 * 60 * 60);
-
-        if (restHrs < 0) {
-          // ACTIVE SHIFT COLLISION / OVERLAP
-          warnings.push({
-            type: "collision",
-            date: nextEntry.date,
-            msg: `Shift overlap conflict: Shift on ${nextEntry.date} starts ${Math.abs(restHrs).toFixed(1)}h before previous shift ends!`,
-          });
-        } else if (restHrs < 11) {
-          // SHORT TURNAROUND VIOLATION (< 11h rest)
-          warnings.push({
-            type: "rest",
-            date: nextEntry.date,
-            msg: `Short turnaround rest: Only ${restHrs.toFixed(1)}h rest between shift ${entry.shift} (${entry.endTime}) and next shift ${nextEntry.shift} (${nextEntry.startTime}).`,
-          });
-        }
-      }
     }
   }
 

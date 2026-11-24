@@ -1,30 +1,22 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight, MapPin, AlignLeft, X } from "lucide-react";
 import { fmtDate, DAYS_SHORT, isON, calcHrs } from "../utils/rosterHelpers";
+import { sanitizeMemberName } from "../utils/teamSync";
 
-export default function CalendarView({ t, roster, shifts, updateEntry, teamData, userName }) {
+export default function CalendarView({ t, roster, shifts, updateEntry, teamData, userName, setView }) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDateStr, setSelectedDateStr] = useState(null);
   const [visibleTeammates, setVisibleTeammates] = useState({});
 
   const touchRef = useRef({ startX: 0, startY: 0, swiping: false });
 
-  // Month navigation
-  const prevMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
-  };
-  const nextMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
-  };
+  const prevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+  const nextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+  const jumpToToday = () => setCurrentDate(new Date());
 
-  // Touch Swipe with horizontal dominance calculation
   const onTouchStart = (e) => {
     if (e.touches.length !== 1) return;
-    touchRef.current = {
-      startX: e.touches[0].clientX,
-      startY: e.touches[0].clientY,
-      swiping: false,
-    };
+    touchRef.current = { startX: e.touches[0].clientX, startY: e.touches[0].clientY, swiping: false };
   };
 
   const onTouchMove = (e) => {
@@ -40,13 +32,10 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
     if (!touchRef.current.swiping) return;
     const dx = e.changedTouches[0].clientX - touchRef.current.startX;
     const dy = e.changedTouches[0].clientY - touchRef.current.startY;
-    const minDistance = 45;
-
-    if (Math.abs(dx) > minDistance && Math.abs(dx) > Math.abs(dy) * 1.4) {
+    if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.4) {
       if (dx < 0) nextMonth();
       else prevMonth();
     }
-
     setTimeout(() => {
       touchRef.current.swiping = false;
     }, 80);
@@ -57,27 +46,30 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
     setSelectedDateStr(dateStr);
   };
 
-  // Escape key listener for Quick Editor modal
   useEffect(() => {
+    if (!selectedDateStr) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     const handleKeyDown = (e) => {
       if (e.key === "Escape") setSelectedDateStr(null);
     };
-    if (selectedDateStr) {
-      window.addEventListener("keydown", handleKeyDown);
-    }
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
   }, [selectedDateStr]);
 
-  // Calendar calculations
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
+  const now = new Date();
+  const isCurrentMonthShown = year === now.getFullYear() && month === now.getMonth();
   const monthLabel = currentDate.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
 
-  // Pre-index roster and shifts for O(1) cell lookups
   const rosterMap = useMemo(() => {
     const map = new Map();
     if (Array.isArray(roster)) {
-      roster.forEach(r => map.set(r.date, r));
+      roster.forEach((r) => map.set(r.date, r));
     }
     return map;
   }, [roster]);
@@ -85,46 +77,43 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
   const shiftsMap = useMemo(() => {
     const map = new Map();
     if (Array.isArray(shifts)) {
-      shifts.forEach(s => map.set(s.code, s));
+      shifts.forEach((s) => map.set(s.code, s));
     }
     return map;
   }, [shifts]);
 
+  const cleanSelfName = useMemo(() => (userName ? sanitizeMemberName(userName) : ""), [userName]);
+
   const { calendarCells, monthStats } = useMemo(() => {
     const firstDayIndex = new Date(year, month, 1).getDay();
     const totalDays = new Date(year, month + 1, 0).getDate();
-    
+
     const cells = [];
     const prevMonthEnd = new Date(year, month, 0).getDate();
     for (let i = firstDayIndex - 1; i >= 0; i--) {
-      const d = new Date(year, month - 1, prevMonthEnd - i);
-      cells.push({ date: d, isCurrentMonth: false });
+      cells.push({ date: new Date(year, month - 1, prevMonthEnd - i), isCurrentMonth: false });
     }
-
     for (let i = 1; i <= totalDays; i++) {
-      const d = new Date(year, month, i);
-      cells.push({ date: d, isCurrentMonth: true });
+      cells.push({ date: new Date(year, month, i), isCurrentMonth: true });
     }
-
     const totalCells = Math.ceil(cells.length / 7) * 7;
     const paddingDays = totalCells - cells.length;
     for (let i = 1; i <= paddingDays; i++) {
-      const d = new Date(year, month + 1, i);
-      cells.push({ date: d, isCurrentMonth: false });
+      cells.push({ date: new Date(year, month + 1, i), isCurrentMonth: false });
     }
 
     let totalWorkHours = 0;
     let workShiftsCount = 0;
     let offDaysCount = 0;
 
-    cells.forEach(cell => {
+    cells.forEach((cell) => {
       if (!cell.isCurrentMonth) return;
       const dStr = fmtDate(cell.date);
       const row = rosterMap.get(dStr);
       if (row && row.shift) {
         const sh = shiftsMap.get(row.shift);
         if (sh && !sh.isOff) {
-          totalWorkHours += calcHrs(row.startTime, row.endTime);
+          totalWorkHours += calcHrs(row.startTime, row.endTime, Boolean(sh.is24Hour));
           workShiftsCount++;
         } else if (sh && sh.isOff) {
           offDaysCount++;
@@ -132,41 +121,44 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
       }
     });
 
-    return { calendarCells: cells, monthStats: { totalWorkHours, workShiftsCount, offDaysCount } };
+    return {
+      calendarCells: cells,
+      monthStats: { totalWorkHours: Number(totalWorkHours.toFixed(1)), workShiftsCount, offDaysCount },
+    };
   }, [year, month, rosterMap, shiftsMap]);
 
-  // Selected cell modal data
   const selectedRowInfo = useMemo(() => {
     if (!selectedDateStr) return null;
-    const idx = (roster || []).findIndex(r => r.date === selectedDateStr);
+    const idx = (roster || []).findIndex((r) => r.date === selectedDateStr);
     const row = rosterMap.get(selectedDateStr);
     return {
       idx,
-      row: row || { date: selectedDateStr, shift: "", startTime: "", endTime: "", eventTitle: "", location: "", notes: "" }
+      row: row || { date: selectedDateStr, shift: "", startTime: "", endTime: "", eventTitle: "", location: "", notes: "" },
     };
   }, [selectedDateStr, roster, rosterMap]);
 
+  const selectedShiftDef = selectedRowInfo?.row?.shift ? shiftsMap.get(selectedRowInfo.row.shift) : null;
+  const isSelectedOff = Boolean(selectedShiftDef?.isOff);
+
   const handleSelectShift = (code) => {
-    if (!selectedDateStr) return;
-    const { idx } = selectedRowInfo;
-    if (idx >= 0) {
-      updateEntry(idx, "shift", code);
-    }
+    if (!selectedDateStr || !selectedRowInfo || selectedRowInfo.idx < 0) return;
+    updateEntry(selectedRowInfo.idx, "shift", code);
   };
 
   const handleUpdateField = (field, val) => {
-    if (!selectedDateStr) return;
-    const { idx } = selectedRowInfo;
-    if (idx >= 0) {
-      updateEntry(idx, field, val);
-    }
+    if (!selectedDateStr || !selectedRowInfo || selectedRowInfo.idx < 0) return;
+    updateEntry(selectedRowInfo.idx, field, val);
   };
 
   const todayStr = useMemo(() => fmtDate(new Date()), []);
 
+  const teammatesList = useMemo(() => {
+    if (!teamData?.members) return [];
+    return Object.keys(teamData.members).filter((m) => sanitizeMemberName(m) !== cleanSelfName);
+  }, [teamData, cleanSelfName]);
+
   return (
     <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {/* Month Navigation & Metrics Bar */}
       <div
         className="glass"
         style={{
@@ -182,7 +174,7 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
           boxShadow: "0 4px 16px rgba(0,0,0,.03)",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <button
             onClick={prevMonth}
             aria-label="Previous month"
@@ -201,8 +193,8 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
           >
             <ChevronLeft size={18} />
           </button>
-          
-          <h2 className="sora" style={{ fontSize: 18, fontWeight: 800, color: t.text, minWidth: 160, textAlign: "center" }}>
+
+          <h2 className="sora" style={{ fontSize: 18, fontWeight: 800, color: t.text, minWidth: 155, textAlign: "center", margin: 0 }}>
             {monthLabel}
           </h2>
 
@@ -224,9 +216,27 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
           >
             <ChevronRight size={18} />
           </button>
+
+          {!isCurrentMonthShown && (
+            <button
+              type="button"
+              onClick={jumpToToday}
+              style={{
+                padding: "7px 12px",
+                borderRadius: 9,
+                border: "1px solid rgba(37,99,235,0.35)",
+                background: t.is ? "rgba(37,99,235,0.18)" : "#EFF6FF",
+                color: "#2563EB",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              Today
+            </button>
+          )}
         </div>
 
-        {/* Month Summary Stats */}
         <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ fontSize: 12, color: t.sub }}>Work Shifts:</span>
@@ -251,8 +261,7 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
         </div>
       </div>
 
-      {/* Teammate Filter Bar */}
-      {teamData?.members && Object.keys(teamData.members).length > 1 && (
+      {teammatesList.length > 0 && (
         <div
           className="glass"
           style={{
@@ -267,13 +276,12 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
           }}
         >
           <span style={{ fontSize: 12, fontWeight: 700, color: t.sub }}>Team Visibility:</span>
-          {Object.keys(teamData.members).map(m => {
-            if (m === userName) return null;
+          {teammatesList.map((m) => {
             const isVisible = visibleTeammates[m] !== false;
             return (
               <button
                 key={m}
-                onClick={() => setVisibleTeammates(p => ({ ...p, [m]: !isVisible }))}
+                onClick={() => setVisibleTeammates((p) => ({ ...p, [m]: !isVisible }))}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -297,7 +305,6 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
         </div>
       )}
 
-      {/* Calendar Grid Container */}
       <div
         className="glass"
         onTouchStart={onTouchStart}
@@ -311,7 +318,6 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
           boxShadow: "0 6px 20px rgba(0,0,0,.03)",
         }}
       >
-        {/* Day Names Header */}
         <div
           style={{
             display: "grid",
@@ -338,7 +344,6 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
           ))}
         </div>
 
-        {/* Days Cells Grid */}
         <div
           style={{
             display: "grid",
@@ -355,17 +360,20 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
             const isToday = dateStr === todayStr;
             const isWeekend = [0, 6].includes(cell.date.getDay());
 
-            // Collect visible teammates' shifts
             const teamShifts = [];
             if (teamData?.members) {
-              Object.keys(teamData.members).forEach(member => {
-                if (member !== userName && visibleTeammates[member] !== false) {
+              teammatesList.forEach((member) => {
+                if (visibleTeammates[member] !== false) {
                   const mRoster = teamData.members[member];
                   if (Array.isArray(mRoster)) {
-                    const mRow = mRoster.find(r => r.date === dateStr);
+                    const mRow = mRoster.find((r) => r.date === dateStr);
                     if (mRow && mRow.shift) {
-                      const mSh = shiftsMap.get(mRow.shift);
-                      if (mSh) teamShifts.push({ member, shift: mSh, startTime: mRow.startTime });
+                      const mSh = shiftsMap.get(mRow.shift) || {
+                        code: mRow.shift,
+                        color: "#64748B",
+                        isOff: false,
+                      };
+                      teamShifts.push({ member, shift: mSh, startTime: mRow.startTime });
                     }
                   }
                 }
@@ -391,21 +399,24 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
                 style={{
                   background: cell.isCurrentMonth
                     ? isToday
-                      ? (t.is ? "rgba(37,99,235,.15)" : "#F0F6FF")
+                      ? t.is
+                        ? "rgba(37,99,235,.15)"
+                        : "#F0F6FF"
                       : t.card
-                    : (t.is ? "#070C17" : "#F8FAFC"),
+                    : t.is
+                    ? "#070C17"
+                    : "#F8FAFC",
                   padding: "8px 6px",
                   cursor: "pointer",
                   display: "flex",
                   flexDirection: "column",
                   justifyContent: "space-between",
                   boxSizing: "border-box",
-                  boxShadow: isToday ? `inset 0 0 0 2px #2563EB` : "none",
+                  boxShadow: isToday ? "inset 0 0 0 2px #2563EB" : "none",
                   opacity: cell.isCurrentMonth ? 1 : 0.4,
                   overflow: "hidden",
                 }}
               >
-                {/* Cell Top: Date Number & Notes Indicator */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <span
                     style={{
@@ -431,7 +442,6 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
                   )}
                 </div>
 
-                {/* Cell Center: Shift Pill */}
                 <div style={{ margin: "4px 0" }}>
                   {sh ? (
                     <div
@@ -460,7 +470,6 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
                     <div style={{ height: 16 }} />
                   )}
 
-                  {/* Teammates: Dot Grid Indicator */}
                   {teamShifts.length > 0 && (
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 3, marginTop: 4, justifyContent: "center" }}>
                       {teamShifts.map((ts, tIdx) => (
@@ -481,7 +490,6 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
                   )}
                 </div>
 
-                {/* Cell Bottom: Event Title Preview */}
                 <div
                   style={{
                     height: 14,
@@ -501,7 +509,6 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
         </div>
       </div>
 
-      {/* QUICK DAY EDITOR MODAL */}
       {selectedRowInfo && (
         <div
           role="dialog"
@@ -517,7 +524,6 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
             padding: 16,
           }}
         >
-          {/* Backdrop */}
           <div
             onClick={() => setSelectedDateStr(null)}
             style={{
@@ -528,7 +534,6 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
             }}
           />
 
-          {/* Modal Container */}
           <div
             style={{
               position: "relative",
@@ -546,7 +551,6 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
               animation: "scaleIn .22s cubic-bezier(.22,.68,0,1.2) forwards",
             }}
           >
-            {/* Header */}
             <div
               style={{
                 padding: "16px 20px",
@@ -558,7 +562,7 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
               }}
             >
               <div>
-                <h3 id="day-editor-title" className="sora" style={{ fontSize: 16, fontWeight: 800, color: t.text }}>
+                <h3 id="day-editor-title" className="sora" style={{ fontSize: 16, fontWeight: 800, color: t.text, margin: 0 }}>
                   Edit Day Schedule
                 </h3>
                 <span style={{ fontSize: 12, color: t.sub, fontWeight: 600 }}>
@@ -585,28 +589,48 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
               </button>
             </div>
 
-            {/* Scrollable Body */}
             {selectedRowInfo.idx < 0 ? (
               <div style={{ padding: 24, textAlign: "center" }}>
                 <p style={{ fontSize: 13, color: t.sub, lineHeight: 1.6 }}>
-                  This date lies outside your current generated roster range. To schedule shifts here, please extend your date range in the <strong>Master Roster</strong> section.
+                  This date lies outside your current generated roster range. Extend your date range in <strong>Master Roster</strong> to assign shifts here.
                 </p>
-                <button
-                  onClick={() => setSelectedDateStr(null)}
-                  style={{
-                    marginTop: 18,
-                    padding: "9px 20px",
-                    borderRadius: 10,
-                    background: "#2563EB",
-                    color: "#fff",
-                    border: "none",
-                    fontSize: 13,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                  }}
-                >
-                  Understood
-                </button>
+                <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 18 }}>
+                  {setView && (
+                    <button
+                      onClick={() => {
+                        setSelectedDateStr(null);
+                        setView("roster");
+                      }}
+                      style={{
+                        padding: "9px 18px",
+                        borderRadius: 10,
+                        background: "#2563EB",
+                        color: "#fff",
+                        border: "none",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Open Master Roster →
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setSelectedDateStr(null)}
+                    style={{
+                      padding: "9px 18px",
+                      borderRadius: 10,
+                      background: "transparent",
+                      border: `1.5px solid ${t.cardBdr}`,
+                      color: t.sub,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
             ) : (
               <div
@@ -618,13 +642,12 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
                   gap: 14,
                 }}
               >
-                {/* Shift Selector */}
                 <div>
                   <label style={{ fontSize: 11, fontWeight: 800, color: t.sub, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
                     Select Shift Type
                   </label>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                    {shifts.map(sh => (
+                    {shifts.map((sh) => (
                       <button
                         key={sh.id}
                         type="button"
@@ -653,7 +676,7 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
                       style={{
                         padding: "6px 12px",
                         borderRadius: 10,
-                        border: selectedRowInfo.row.shift === "" ? `2px solid #94A3B8` : `1px solid ${t.inputBdr}`,
+                        border: selectedRowInfo.row.shift === "" ? "2px solid #94A3B8" : `1px solid ${t.inputBdr}`,
                         background: "transparent",
                         color: t.sub,
                         fontWeight: 600,
@@ -666,7 +689,6 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
                   </div>
                 </div>
 
-                {/* Start & End Times */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   <div>
                     <label style={{ fontSize: 11, fontWeight: 800, color: t.sub, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
@@ -675,9 +697,9 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
                     <input
                       type="time"
                       value={selectedRowInfo.row.startTime}
-                      disabled={selectedRowInfo.row.shift === "F"}
-                      onChange={e => handleUpdateField("startTime", e.target.value)}
-                      style={inputStyle(t, selectedRowInfo.row.shift === "F")}
+                      disabled={isSelectedOff}
+                      onChange={(e) => handleUpdateField("startTime", e.target.value)}
+                      style={inputStyle(t, isSelectedOff)}
                     />
                   </div>
                   <div>
@@ -687,14 +709,13 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
                     <input
                       type="time"
                       value={selectedRowInfo.row.endTime}
-                      disabled={selectedRowInfo.row.shift === "F"}
-                      onChange={e => handleUpdateField("endTime", e.target.value)}
-                      style={inputStyle(t, selectedRowInfo.row.shift === "F")}
+                      disabled={isSelectedOff}
+                      onChange={(e) => handleUpdateField("endTime", e.target.value)}
+                      style={inputStyle(t, isSelectedOff)}
                     />
                   </div>
                 </div>
 
-                {/* Event Title */}
                 <div>
                   <label style={{ fontSize: 11, fontWeight: 800, color: t.sub, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
                     Event Title
@@ -703,12 +724,11 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
                     type="text"
                     value={selectedRowInfo.row.eventTitle}
                     placeholder="e.g. Ward Coverage, On-Call"
-                    onChange={e => handleUpdateField("eventTitle", e.target.value)}
+                    onChange={(e) => handleUpdateField("eventTitle", e.target.value)}
                     style={inputStyle(t)}
                   />
                 </div>
 
-                {/* Location */}
                 <div>
                   <label style={{ fontSize: 11, fontWeight: 800, color: t.sub, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
                     Location
@@ -719,13 +739,12 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
                       type="text"
                       value={selectedRowInfo.row.location}
                       placeholder="e.g. Building A, Room 402"
-                      onChange={e => handleUpdateField("location", e.target.value)}
+                      onChange={(e) => handleUpdateField("location", e.target.value)}
                       style={{ ...inputStyle(t), paddingLeft: 34 }}
                     />
                   </div>
                 </div>
 
-                {/* Notes */}
                 <div>
                   <label style={{ fontSize: 11, fontWeight: 800, color: t.sub, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
                     Notes
@@ -736,20 +755,21 @@ export default function CalendarView({ t, roster, shifts, updateEntry, teamData,
                       type="text"
                       value={selectedRowInfo.row.notes}
                       placeholder="e.g. Handover details, special instructions..."
-                      onChange={e => handleUpdateField("notes", e.target.value)}
+                      onChange={(e) => handleUpdateField("notes", e.target.value)}
                       style={{ ...inputStyle(t), paddingLeft: 34 }}
                     />
                   </div>
                 </div>
 
-                {/* Overnight Warning */}
-                {selectedRowInfo.row.startTime && selectedRowInfo.row.endTime && isON(selectedRowInfo.row.startTime, selectedRowInfo.row.endTime) && (
-                  <div style={{ padding: "8px 12px", borderRadius: 8, background: "rgba(217,119,6,.08)", border: "1px solid #D97706", color: "#D97706", fontSize: 11, fontWeight: 600 }}>
-                    🌙 Overnight shift detected (ends next morning).
-                  </div>
-                )}
-                
-                {/* Done Button */}
+                {!isSelectedOff &&
+                  selectedRowInfo.row.startTime &&
+                  selectedRowInfo.row.endTime &&
+                  isON(selectedRowInfo.row.startTime, selectedRowInfo.row.endTime, Boolean(selectedShiftDef?.is24Hour)) && (
+                    <div style={{ padding: "8px 12px", borderRadius: 8, background: "rgba(217,119,6,.08)", border: "1px solid #D97706", color: "#D97706", fontSize: 11, fontWeight: 600 }}>
+                      🌙 Overnight shift detected (ends next morning).
+                    </div>
+                  )}
+
                 <button
                   type="button"
                   onClick={() => setSelectedDateStr(null)}

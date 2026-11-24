@@ -1,46 +1,65 @@
 import { useMemo } from "react";
 import { Clock, Calendar, CheckSquare, Award, AlertTriangle, DollarSign, TrendingUp } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
-import { calcHrs, calcEarnings, checkConflicts, dayShort, fmtDayFull, isON, todayStr } from "../utils/rosterHelpers";
+import {
+  calcHrs,
+  calcEarnings,
+  checkConflicts,
+  dayShort,
+  fmtDate,
+  fmtDayFull,
+  isON,
+  todayStr,
+  isWorkShift,
+  isRestDay,
+  isNightShift,
+} from "../utils/rosterHelpers";
 
 export default function DashboardView({ t, roster, shifts, setView }) {
   const today = todayStr();
-  
+
   const { work, night, off, totalH, upcoming, weekStrip } = useMemo(() => {
-    const work = roster.filter((r) => r.shift && r.shift !== "F" && r.startTime);
-    const night = roster.filter((r) => r.shift === "N");
-    const off = roster.filter((r) => r.shift === "F" || !r.shift);
-    const totalH = work.reduce((a, r) => a + calcHrs(r.startTime, r.endTime), 0);
+    const now = new Date();
+    const work = roster.filter((r) => isWorkShift(r.shift, shifts) && r.startTime);
+    const night = roster.filter((r) => isNightShift(r.shift, shifts, r.startTime, r.endTime));
+    const off = roster.filter((r) => isRestDay(r.shift, shifts));
+    const totalH = work.reduce((a, r) => {
+      const sh = shifts.find((s) => s.code === r.shift);
+      return a + calcHrs(r.startTime, r.endTime, Boolean(sh?.is24Hour));
+    }, 0);
+
     const upcoming = roster
-      .filter((r) => r.date >= today && r.shift && r.shift !== "F")
+      .filter((r) => {
+        if (!isWorkShift(r.shift, shifts)) return false;
+        if (r.date > today) return true;
+        if (r.date < today) return false;
+        if (!r.endTime) return true;
+        const sh = shifts.find((s) => s.code === r.shift);
+        const endDt = new Date(`${r.date}T${r.endTime}:00`);
+        if (r.startTime && isON(r.startTime, r.endTime, Boolean(sh?.is24Hour))) {
+          endDt.setDate(endDt.getDate() + 1);
+        }
+        return endDt > now;
+      })
       .slice(0, 5);
 
-    // next 7 days strip
     const base = new Date(today + "T00:00:00");
     const weekStrip = Array.from({ length: 7 }, (_, i) => {
       const d = new Date(base);
       d.setDate(d.getDate() + i);
-      const ds = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-      // format to YYYY-MM-DD local style
-      const y = ds.getFullYear();
-      const m = String(ds.getMonth() + 1).padStart(2, "0");
-      const day = String(ds.getDate()).padStart(2, "0");
-      const dsStr = `${y}-${m}-${day}`;
+      const dsStr = fmtDate(d);
       return { ds: dsStr, row: roster.find((r) => r.date === dsStr) };
     });
 
     return { work, night, off, totalH, upcoming, weekStrip };
-  }, [roster, today]);
+  }, [roster, shifts, today]);
 
   const next = upcoming[0];
   const nextSh = next ? shifts.find((s) => s.code === next.shift) : null;
   const hr = new Date().getHours();
   const greet = hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening";
 
-  // Dynamic earnings calculation
   const estimatedEarnings = useMemo(() => calcEarnings(roster, shifts), [roster, shifts]);
-
-  // Conflict / Fatigue Warnings
   const warnings = useMemo(() => checkConflicts(roster, shifts), [roster, shifts]);
 
   const breakdown = useMemo(() => {
@@ -57,15 +76,27 @@ export default function DashboardView({ t, roster, shifts, setView }) {
 
   const chartData = useMemo(() => {
     if (roster.length === 0) return [];
-    const chunks = [];
-    for (let i = 0; i < roster.length; i += 7) {
-      const slice = roster.slice(i, i + 7);
-      const hours = slice.reduce((sum, r) => sum + (r.shift && r.shift !== "F" ? calcHrs(r.startTime, r.endTime) : 0), 0);
-      const weekLabel = slice[0]?.date ? `${slice[0].date.slice(5)}` : `W${Math.floor(i / 7) + 1}`;
-      chunks.push({ name: weekLabel, hours: Number(hours.toFixed(1)) });
-    }
-    return chunks.slice(0, 8);
-  }, [roster]);
+    const weekMap = new Map();
+    roster.forEach((r) => {
+      if (!r.date || !isWorkShift(r.shift, shifts)) return;
+      const d = new Date(r.date + "T00:00:00");
+      const day = d.getDay();
+      const diffToMonday = day === 0 ? -6 : 1 - day;
+      const monday = new Date(d);
+      monday.setDate(d.getDate() + diffToMonday);
+      const key = fmtDate(monday);
+      const sh = shifts.find((s) => s.code === r.shift);
+      const hrs = calcHrs(r.startTime, r.endTime, Boolean(sh?.is24Hour));
+      weekMap.set(key, (weekMap.get(key) || 0) + hrs);
+    });
+    return Array.from(weekMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(0, 8)
+      .map(([weekStart, hours]) => ({
+        name: weekStart.slice(5),
+        hours: Number(hours.toFixed(1)),
+      }));
+  }, [roster, shifts]);
 
   const stats = [
     { label: "Scheduled Shifts", val: work.length, icon: CheckSquare, clr: "#2563EB", bg: t.is ? "rgba(37,99,235,.15)" : "#EFF6FF" },
@@ -83,7 +114,19 @@ export default function DashboardView({ t, roster, shifts, setView }) {
 
   return (
     <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 20, width: "100%" }}>
-      {/* Greeting */}
+      <style>{`
+        .bento-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 18px; }
+        .bento-hero { grid-column: span 8; }
+        .bento-stats { grid-column: span 4; }
+        .bento-full { grid-column: span 12; }
+        .bento-timeline { grid-column: span 7; }
+        .bento-dist { grid-column: span 5; }
+        .week-strip-grid { display: grid; grid-template-columns: repeat(7, minmax(64px, 1fr)); gap: 8px; overflow-x: auto; }
+        @media(max-width: 960px) {
+          .bento-hero, .bento-stats, .bento-timeline, .bento-dist { grid-column: span 12; }
+        }
+      `}</style>
+
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 12 }}>
         <div>
           <div className="sora" style={{ fontSize: 30, fontWeight: 900, color: t.text, letterSpacing: "-0.8px" }}>
@@ -117,7 +160,6 @@ export default function DashboardView({ t, roster, shifts, setView }) {
         </button>
       </div>
 
-      {/* HEALTH & FATIGUE WARNINGS BANNER */}
       {warnings.length > 0 && (
         <div
           style={{
@@ -160,17 +202,13 @@ export default function DashboardView({ t, roster, shifts, setView }) {
         </div>
       )}
 
-      {/* BENTO GRID */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(12,1fr)", gap: 18 }}>
-        
-        {/* Next Shift Box */}
+      <div className="bento-grid">
         {next ? (
           <div
-            className="card-lift"
+            className="card-lift bento-hero"
             style={{
-              gridColumn: "span 8",
               borderRadius: 24,
-              padding: "30px 34px",
+              padding: "28px 30px",
               position: "relative",
               overflow: "hidden",
               background: `linear-gradient(135deg, ${nextSh?.color || "#2563EB"} 0%, #0A1024 100%)`,
@@ -198,7 +236,7 @@ export default function DashboardView({ t, roster, shifts, setView }) {
                 justifyContent: "space-between",
                 alignItems: "center",
                 flexWrap: "wrap",
-                gap: 24,
+                gap: 20,
               }}
             >
               <div style={{ minWidth: 0 }}>
@@ -228,14 +266,14 @@ export default function DashboardView({ t, roster, shifts, setView }) {
                 <div
                   className="sora"
                   style={{
-                    fontSize: 34,
+                    fontSize: "clamp(24px, 4vw, 34px)",
                     fontWeight: 900,
                     color: "#fff",
                     letterSpacing: "-0.8px",
                     marginBottom: 8,
                   }}
                 >
-                  {nextSh?.title || "Upcoming"}
+                  {next.eventTitle || nextSh?.title || "Upcoming"}
                 </div>
                 <div style={{ fontSize: 15, color: "rgba(255,255,255,.85)", fontWeight: 500 }}>
                   {fmtDayFull(next.date)}
@@ -246,7 +284,7 @@ export default function DashboardView({ t, roster, shifts, setView }) {
                       <strong style={{ color: "#fff" }}>
                         {next.startTime} – {next.endTime}
                       </strong>{" "}
-                      {isON(next.startTime, next.endTime) && "🌙"}
+                      {isON(next.startTime, next.endTime, Boolean(nextSh?.is24Hour)) && "🌙"}
                     </>
                   )}
                 </div>
@@ -255,7 +293,7 @@ export default function DashboardView({ t, roster, shifts, setView }) {
                 className="glass"
                 style={{
                   background: "rgba(255,255,255,.12)",
-                  padding: "18px 30px",
+                  padding: "16px 26px",
                   borderRadius: 20,
                   textAlign: "center",
                   border: "1px solid rgba(255,255,255,.2)",
@@ -273,7 +311,7 @@ export default function DashboardView({ t, roster, shifts, setView }) {
                 >
                   Code
                 </div>
-                <div className="sora" style={{ fontSize: 44, fontWeight: 900, color: "#fff", lineHeight: 1 }}>
+                <div className="sora" style={{ fontSize: 40, fontWeight: 900, color: "#fff", lineHeight: 1 }}>
                   {next.shift}
                 </div>
               </div>
@@ -281,9 +319,9 @@ export default function DashboardView({ t, roster, shifts, setView }) {
           </div>
         ) : (
           <div
+            className="bento-hero"
             style={{
               ...card,
-              gridColumn: "span 8",
               padding: "40px",
               display: "flex",
               flexDirection: "column",
@@ -318,8 +356,7 @@ export default function DashboardView({ t, roster, shifts, setView }) {
           </div>
         )}
 
-        {/* 2x2 Stat Cluster */}
-        <div style={{ gridColumn: "span 4", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div className="bento-stats" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
           {stats.map((s, i) => {
             const Icon = s.icon;
             return (
@@ -341,7 +378,7 @@ export default function DashboardView({ t, roster, shifts, setView }) {
                 </div>
                 <div
                   className="sora"
-                  style={{ fontSize: 22, fontWeight: 900, color: t.text, lineHeight: 1, letterSpacing: "-0.5px" }}
+                  style={{ fontSize: "clamp(17px, 3.5vw, 22px)", fontWeight: 900, color: t.text, lineHeight: 1.1, letterSpacing: "-0.5px" }}
                 >
                   {s.val}
                 </div>
@@ -362,8 +399,7 @@ export default function DashboardView({ t, roster, shifts, setView }) {
           })}
         </div>
 
-        {/* Week Strip */}
-        <div style={{ ...card, gridColumn: "span 12", padding: "20px 24px" }}>
+        <div className="bento-full" style={{ ...card, padding: "20px 22px" }}>
           <div
             style={{
               fontSize: 12,
@@ -376,7 +412,7 @@ export default function DashboardView({ t, roster, shifts, setView }) {
           >
             Next 7 Days
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 10 }}>
+          <div className="week-strip-grid">
             {weekStrip.map(({ ds, row }, i) => {
               const sh = row?.shift ? shifts.find((s) => s.code === row.shift) : null;
               const isToday = ds === today;
@@ -385,32 +421,20 @@ export default function DashboardView({ t, roster, shifts, setView }) {
                   key={i}
                   style={{
                     borderRadius: 14,
-                    padding: "12px 10px",
+                    padding: "10px 8px",
                     textAlign: "center",
-                    border: `1px solid ${isToday ? "#2563EB" : t.cardBdr}`,
+                    border: `1.5px solid ${isToday ? "#2563EB" : t.cardBdr}`,
                     background: sh ? `${sh.color}14` : t.cardHov,
-                    position: "relative",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 4,
                   }}
                 >
-                  {isToday && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: 6,
-                        right: 8,
-                        fontSize: 8,
-                        fontWeight: 800,
-                        color: "#2563EB",
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      Today
-                    </div>
-                  )}
-                  <div style={{ fontSize: 10, fontWeight: 700, color: t.sub, textTransform: "uppercase" }}>
-                    {dayShort(ds)}
+                  <div style={{ fontSize: 10, fontWeight: 800, color: isToday ? "#2563EB" : t.sub, textTransform: "uppercase" }}>
+                    {isToday ? "Today" : dayShort(ds)}
                   </div>
-                  <div className="sora" style={{ fontSize: 16, fontWeight: 800, color: t.text, margin: "2px 0 6px" }}>
+                  <div className="sora" style={{ fontSize: 16, fontWeight: 800, color: t.text }}>
                     {ds.slice(8)}
                   </div>
                   {sh ? (
@@ -436,9 +460,8 @@ export default function DashboardView({ t, roster, shifts, setView }) {
           </div>
         </div>
 
-        {/* Weekly Hours Trend Chart */}
         {chartData.length > 0 && (
-          <div style={{ ...card, gridColumn: "span 12", padding: "24px 26px" }}>
+          <div className="bento-full" style={{ ...card, padding: "24px 26px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, flexWrap: "wrap", gap: 10 }}>
               <div>
                 <div className="sora" style={{ fontSize: 16, fontWeight: 800, color: t.text, display: "flex", alignItems: "center", gap: 8 }}>
@@ -469,7 +492,7 @@ export default function DashboardView({ t, roster, shifts, setView }) {
                     }}
                   />
                   <Bar dataKey="hours" fill="#2563EB" radius={[6, 6, 0, 0]}>
-                    {chartData.map((entry, index) => (
+                    {chartData.map((_entry, index) => (
                       <Cell key={`cell-${index}`} fill={index % 2 === 0 ? "#2563EB" : "#7C3AED"} />
                     ))}
                   </Bar>
@@ -479,8 +502,7 @@ export default function DashboardView({ t, roster, shifts, setView }) {
           </div>
         )}
 
-        {/* Timeline */}
-        <div style={{ ...card, gridColumn: "span 7", padding: "24px 26px", minWidth: 0 }}>
+        <div className="bento-timeline" style={{ ...card, padding: "24px 26px", minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
             <div className="sora" style={{ fontSize: 16, fontWeight: 800, color: t.text }}>
               Upcoming Timeline
@@ -510,7 +532,7 @@ export default function DashboardView({ t, roster, shifts, setView }) {
               />
               {upcoming.map((r, i) => {
                 const sh = shifts.find((s) => s.code === r.shift);
-                const ov = isON(r.startTime, r.endTime);
+                const ov = isON(r.startTime, r.endTime, Boolean(sh?.is24Hour));
                 return (
                   <div
                     key={i}
@@ -594,8 +616,7 @@ export default function DashboardView({ t, roster, shifts, setView }) {
           )}
         </div>
 
-        {/* Distribution & Shift list */}
-        <div style={{ ...card, gridColumn: "span 5", padding: "24px 26px", minWidth: 0 }}>
+        <div className="bento-dist" style={{ ...card, padding: "24px 26px", minWidth: 0 }}>
           <div className="sora" style={{ fontSize: 16, fontWeight: 800, color: t.text, marginBottom: 18 }}>
             Shift Distribution
           </div>
@@ -605,7 +626,7 @@ export default function DashboardView({ t, roster, shifts, setView }) {
             <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 20 }}>
               {breakdown.b.map((sh) => (
                 <div key={sh.id} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{ width: 30, fontSize: 11, fontWeight: 800, color: sh.color, flexShrink: 0 }}>
+                  <div style={{ width: 32, fontSize: 11, fontWeight: 800, color: sh.color, flexShrink: 0 }}>
                     {sh.code}
                   </div>
                   <div
@@ -673,15 +694,7 @@ export default function DashboardView({ t, roster, shifts, setView }) {
             ))}
           </div>
         </div>
-
       </div>
-
-      <style>{`@media(max-width:900px){
-        .anim-fade-up > div > [style*="span 8"],
-        .anim-fade-up > div > [style*="span 7"],
-        .anim-fade-up > div > [style*="span 5"],
-        .anim-fade-up > div > [style*="span 4"]{grid-column:span 12!important}
-      }`}</style>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
-import { AlertTriangle, Sparkles, Search, Layers } from "lucide-react";
-import { calcHrs, dayFull, checkConflicts, isON } from "../utils/rosterHelpers";
+import { AlertTriangle, Sparkles, Search, Layers, X } from "lucide-react";
+import { calcHrs, dayFull, checkConflicts, isON, isWorkShift, isRestDay, isNightShift } from "../utils/rosterHelpers";
 import EmptyState from "./EmptyState.jsx";
 import toast from "react-hot-toast";
 
@@ -16,27 +16,28 @@ export default function RosterView({
   updateEntry,
   applyDetectedPattern,
   rangeError,
-  detectPattern
+  detectPattern,
 }) {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [dismissed, setDismissed] = useState(false);
+  const [activeWarningDate, setActiveWarningDate] = useState(null);
 
-  // Detect pattern
-  const cycle = useMemo(() => detectPattern(roster), [roster, detectPattern]);
+  const detected = useMemo(() => detectPattern(roster), [roster, detectPattern]);
+  const cycle = detected?.cycle || null;
+
   const emptyCount = useMemo(() => {
     const firstIdx = roster.findIndex((r) => r.shift);
     return firstIdx < 0 ? 0 : roster.slice(firstIdx).filter((r) => !r.shift).length;
   }, [roster]);
-  const showBanner = cycle && emptyCount > 0 && !dismissed;
+  const showBanner = Boolean(cycle && emptyCount > 0 && !dismissed);
 
-  // Filter and search
   const filtered = useMemo(
     () =>
       roster.filter((r) => {
-        if (filter === "work" && (r.shift === "F" || !r.shift)) return false;
-        if (filter === "off" && r.shift !== "F") return false;
-        if (filter === "night" && r.shift !== "N") return false;
+        if (filter === "work" && !isWorkShift(r.shift, shifts)) return false;
+        if (filter === "off" && !isRestDay(r.shift, shifts)) return false;
+        if (filter === "night" && !isNightShift(r.shift, shifts, r.startTime, r.endTime)) return false;
         if (
           search &&
           !r.date.includes(search) &&
@@ -45,53 +46,79 @@ export default function RosterView({
           return false;
         return true;
       }),
-    [roster, filter, search]
+    [roster, shifts, filter, search]
   );
 
-  const { totalH, workCount } = useMemo(() => {
-    const w = roster.filter((r) => r.shift && r.shift !== "F");
+  const { totalH, workCount, nightCount, offCount } = useMemo(() => {
+    const w = roster.filter((r) => isWorkShift(r.shift, shifts));
+    const n = roster.filter((r) => isNightShift(r.shift, shifts, r.startTime, r.endTime));
+    const o = roster.filter((r) => isRestDay(r.shift, shifts));
     return {
-      totalH: w.reduce((a, r) => a + calcHrs(r.startTime, r.endTime), 0),
+      totalH: w.reduce((a, r) => {
+        const sh = shifts.find((s) => s.code === r.shift);
+        return a + calcHrs(r.startTime, r.endTime, Boolean(sh?.is24Hour));
+      }, 0),
       workCount: w.length,
+      nightCount: n.length,
+      offCount: o.length,
     };
-  }, [roster]);
+  }, [roster, shifts]);
 
   const estimatedEarnings = useMemo(() => {
     return roster.reduce((total, r) => {
       const sh = shifts.find((s) => s.code === r.shift);
       if (!sh || sh.isOff || !r.startTime || !r.endTime) return total;
-      const hrs = calcHrs(r.startTime, r.endTime);
+      const hrs = calcHrs(r.startTime, r.endTime, Boolean(sh.is24Hour));
       return total + hrs * (sh.hourlyRate || 0);
     }, 0);
   }, [roster, shifts]);
 
-  // Compute conflicts to display inline in the table
   const warnings = useMemo(() => checkConflicts(roster, shifts), [roster, shifts]);
 
-  // Pre-index warning lookup for O(1) row queries
   const warningMap = useMemo(() => {
     const map = new Map();
-    warnings.forEach((w) => map.set(w.date, w));
+    warnings.forEach((w) => {
+      if (!map.has(w.date)) map.set(w.date, []);
+      map.get(w.date).push(w);
+    });
     return map;
   }, [warnings]);
 
-  // Pre-index roster original index for O(1) mutations
   const rosterIndexMap = useMemo(() => {
     const map = new Map();
-    roster.forEach((r, idx) => map.set(r.date, idx));
+    roster.forEach((r, idx) => {
+      if (!map.has(r.date)) map.set(r.date, idx);
+    });
     return map;
   }, [roster]);
 
   const FILTERS = [
     { id: "all", label: "All Days", count: roster.length },
-    { id: "work", label: "Work Shifts", count: roster.filter((r) => r.shift && r.shift !== "F").length },
-    { id: "night", label: "Night Only", count: roster.filter((r) => r.shift === "N").length },
-    { id: "off", label: "Off Days", count: roster.filter((r) => r.shift === "F" || !r.shift).length },
+    { id: "work", label: "Work Shifts", count: workCount },
+    { id: "night", label: "Night Only", count: nightCount },
+    { id: "off", label: "Off Days", count: offCount },
   ];
+
+  const handleApplyPreset = (preset) => {
+    const res = applyDetectedPattern(preset.pattern);
+    if (res?.missingCodes?.length > 0) {
+      toast(`Applied ${preset.name} (skipped missing shift codes: ${res.missingCodes.join(", ")})`, { icon: "⚠️" });
+    } else if (res?.appliedCount === 0) {
+      toast("No empty days left to fill.", { icon: "ℹ️" });
+    } else {
+      toast.success(`Applied ${preset.name} rotation!`);
+    }
+  };
 
   return (
     <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-      {/* Print-only Header */}
+      <style>{`
+        .roster-sticky-bar { bottom: calc(70px + var(--safe-bottom, 0px)); }
+        @media(min-width: 768px) {
+          .roster-sticky-bar { bottom: 16px; }
+        }
+      `}</style>
+
       <div className="print-header">
         <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>SkyRoster Shift Schedule</h1>
         <p style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
@@ -131,7 +158,6 @@ export default function RosterView({
         )}
       </div>
 
-      {/* Generate */}
       <div
         style={{
           background: t.card,
@@ -190,7 +216,6 @@ export default function RosterView({
           </div>
           <button
             onClick={generateRoster}
-            disabled={!startDate || !endDate}
             style={{
               height: 42,
               padding: "0 26px",
@@ -200,7 +225,8 @@ export default function RosterView({
               border: "none",
               fontWeight: 600,
               fontSize: 13,
-              cursor: !startDate || !endDate ? "not-allowed" : "pointer",
+              cursor: "pointer",
+              opacity: !startDate || !endDate ? 0.7 : 1,
               boxShadow: "0 4px 14px rgba(37,99,235,.3)",
             }}
           >
@@ -213,7 +239,6 @@ export default function RosterView({
           </div>
         )}
 
-        {/* Preset Templates */}
         <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${t.tBdr}` }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: t.sub, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
             <Layers size={13} color="#2563EB" />
@@ -230,13 +255,10 @@ export default function RosterView({
               <button
                 key={preset.name}
                 type="button"
-                onClick={() => {
-                  applyDetectedPattern(preset.pattern);
-                  toast.success(`Applied ${preset.name} rotation!`);
-                }}
+                onClick={() => handleApplyPreset(preset)}
                 disabled={roster.length === 0}
                 style={{
-                  padding: "5px 12px",
+                  padding: "6px 12px",
                   borderRadius: 8,
                   border: `1px solid ${t.cardBdr}`,
                   background: t.is ? "rgba(255,255,255,0.04)" : "#F8FAFC",
@@ -255,7 +277,6 @@ export default function RosterView({
         </div>
       </div>
 
-      {/* PATTERN BANNER */}
       {showBanner && (
         <div
           className="anim-scale"
@@ -317,7 +338,7 @@ export default function RosterView({
           </div>
           <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
             <button
-              onClick={() => applyDetectedPattern(cycle)}
+              onClick={() => applyDetectedPattern(detected)}
               style={{
                 padding: "8px 18px",
                 borderRadius: 10,
@@ -351,6 +372,40 @@ export default function RosterView({
         </div>
       )}
 
+      {activeWarningDate && warningMap.has(activeWarningDate) && (
+        <div
+          style={{
+            background: t.is ? "rgba(239, 68, 68, 0.1)" : "#FEF2F2",
+            border: "1px solid #FCA5A5",
+            borderRadius: 14,
+            padding: "12px 16px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            gap: 12,
+          }}
+        >
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: "#EF4444" }}>
+              Alerts for {activeWarningDate}
+            </div>
+            {warningMap.get(activeWarningDate).map((w, idx) => (
+              <div key={idx} style={{ fontSize: 12.5, color: t.text }}>
+                • {w.msg}
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => setActiveWarningDate(null)}
+            aria-label="Close warning details"
+            style={{ background: "none", border: "none", color: t.sub, cursor: "pointer", padding: 4 }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
       {roster.length === 0 ? (
         <EmptyState
           t={t}
@@ -362,7 +417,6 @@ export default function RosterView({
         />
       ) : (
         <>
-          {/* Filters and Search */}
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <div style={{ display: "flex", gap: 6, flex: 1, flexWrap: "wrap" }}>
               {FILTERS.map((f) => (
@@ -386,8 +440,7 @@ export default function RosterView({
                 </button>
               ))}
             </div>
-            
-            {/* Search Input */}
+
             <div style={{ position: "relative" }}>
               <Search size={14} style={{ position: "absolute", left: 12, top: 10, color: t.sub }} />
               <input
@@ -397,7 +450,7 @@ export default function RosterView({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 style={{
-                  padding: "5px 8px 5px 32px",
+                  padding: "6px 10px 6px 32px",
                   borderRadius: 8,
                   border: `1px solid ${t.inputBdr}`,
                   background: t.inputBg,
@@ -411,7 +464,6 @@ export default function RosterView({
             </div>
           </div>
 
-          {/* Roster Table */}
           <div
             style={{
               background: t.card,
@@ -427,8 +479,8 @@ export default function RosterView({
                   <tr style={{ background: t.tHead }}>
                     {[
                       { label: "Date & Day", w: 150 },
-                      { label: "Shift", w: 120 },
-                      { label: "Start → End", w: 180 },
+                      { label: "Shift", w: 145 },
+                      { label: "Start → End", w: 215 },
                       { label: "Event Title", w: 180 },
                       { label: "Location", w: 140, cls: "hide-mob" },
                       { label: "Notes", w: 150, cls: "hide-mob" },
@@ -456,20 +508,18 @@ export default function RosterView({
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((r) => {
-                    const origIdx = rosterIndexMap.get(r.date) ?? -1;
+                  {filtered.map((r, fIdx) => {
+                    const origIdx = rosterIndexMap.get(r.date) ?? fIdx;
                     const sh = shifts.find((s) => s.code === r.shift);
-                    const ov = isON(r.startTime, r.endTime);
-                    const hrs = calcHrs(r.startTime, r.endTime);
-                    const isOff = r.shift === "F";
+                    const isOff = Boolean(sh?.isOff);
+                    const ov = !isOff && isON(r.startTime, r.endTime, Boolean(sh?.is24Hour));
+                    const hrs = isOff ? 0 : calcHrs(r.startTime, r.endTime, Boolean(sh?.is24Hour));
                     const isWeekend = [0, 6].includes(new Date(r.date + "T00:00:00").getDay());
-
-                    // O(1) Warning lookup
-                    const rowWarning = warningMap.get(r.date);
+                    const rowWarnings = warningMap.get(r.date);
 
                     return (
                       <tr
-                        key={r.date}
+                        key={`${r.date}-${fIdx}`}
                         className="roster-row row-hover"
                         style={{
                           borderBottom: `1px solid ${t.tBdr}`,
@@ -484,7 +534,6 @@ export default function RosterView({
                             : "transparent",
                         }}
                       >
-                        {/* Date Cell with inline Alerts */}
                         <td style={{ padding: "10px 16px", whiteSpace: "nowrap" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                             <div>
@@ -495,28 +544,37 @@ export default function RosterView({
                                 {dayFull(r.date)}
                               </div>
                             </div>
-                            {rowWarning && (
-                              <div
+                            {rowWarnings && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setActiveWarningDate((prev) => (prev === r.date ? null : r.date))
+                                }
+                                title={rowWarnings.map((w) => w.msg).join(" | ")}
+                                aria-label={`View ${rowWarnings.length} schedule warning(s) for ${r.date}`}
                                 style={{
+                                  background: "rgba(239, 68, 68, 0.12)",
+                                  border: "none",
+                                  borderRadius: 6,
+                                  padding: 4,
                                   color: "#EF4444",
                                   cursor: "pointer",
                                   display: "flex",
                                   alignItems: "center",
                                 }}
-                                title={rowWarning.msg}
                               >
-                                <AlertTriangle size={15} />
-                              </div>
+                                <AlertTriangle size={14} />
+                              </button>
                             )}
                           </div>
                         </td>
 
-                        {/* Shift Dropdown */}
                         <td style={{ padding: "10px 16px", whiteSpace: "nowrap" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                             <button
                               type="button"
                               onClick={() => {
+                                if (!shifts.length) return;
                                 const currentIdx = shifts.findIndex((s) => s.code === r.shift);
                                 const nextShift = shifts[(currentIdx + 1) % shifts.length];
                                 updateEntry(origIdx, "shift", nextShift.code);
@@ -527,7 +585,7 @@ export default function RosterView({
                               }}
                               title="Click to cycle next shift · Right-click to clear"
                               style={{
-                                padding: "4px 6px",
+                                padding: "5px 7px",
                                 borderRadius: 6,
                                 border: `1px solid ${sh ? sh.color : t.inputBdr}`,
                                 background: sh ? `${sh.color}18` : "transparent",
@@ -583,10 +641,28 @@ export default function RosterView({
                                 </div>
                               )}
                             </div>
+                            {r.shift && (
+                              <button
+                                type="button"
+                                onClick={() => updateEntry(origIdx, "shift", "")}
+                                title="Clear shift"
+                                aria-label={`Clear shift for ${r.date}`}
+                                style={{
+                                  background: "none",
+                                  border: "none",
+                                  color: t.sub,
+                                  cursor: "pointer",
+                                  padding: 4,
+                                  display: "flex",
+                                  alignItems: "center",
+                                }}
+                              >
+                                <X size={13} />
+                              </button>
+                            )}
                           </div>
                         </td>
 
-                        {/* Start and End Times */}
                         <td style={{ padding: "10px 16px", whiteSpace: "nowrap" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                             <input
@@ -595,7 +671,7 @@ export default function RosterView({
                               value={r.startTime}
                               onChange={(e) => updateEntry(origIdx, "startTime", e.target.value)}
                               disabled={isOff}
-                              style={tinyInputStyle(t, isOff)}
+                              style={tinyInputStyle(t, isOff, 94)}
                             />
                             <span style={{ color: t.sub, fontSize: 10 }}>→</span>
                             <input
@@ -604,13 +680,12 @@ export default function RosterView({
                               value={r.endTime}
                               onChange={(e) => updateEntry(origIdx, "endTime", e.target.value)}
                               disabled={isOff}
-                              style={tinyInputStyle(t, isOff)}
+                              style={tinyInputStyle(t, isOff, 94)}
                             />
                             {ov && <span title="Overnight shift" style={{ fontSize: 13 }}>🌙</span>}
                           </div>
                         </td>
 
-                        {/* Title */}
                         <td style={{ padding: "10px 16px", whiteSpace: "nowrap" }}>
                           <input
                             type="text"
@@ -618,11 +693,10 @@ export default function RosterView({
                             value={r.eventTitle}
                             onChange={(e) => updateEntry(origIdx, "eventTitle", e.target.value)}
                             placeholder="Event title"
-                            style={tinyInputStyle(t)}
+                            style={tinyInputStyle(t, false, 130)}
                           />
                         </td>
 
-                        {/* Location */}
                         <td className="hide-mob" style={{ padding: "10px 16px", whiteSpace: "nowrap" }}>
                           <input
                             type="text"
@@ -630,11 +704,10 @@ export default function RosterView({
                             value={r.location}
                             onChange={(e) => updateEntry(origIdx, "location", e.target.value)}
                             placeholder="Location"
-                            style={tinyInputStyle(t)}
+                            style={tinyInputStyle(t, false, 115)}
                           />
                         </td>
 
-                        {/* Notes */}
                         <td className="hide-mob" style={{ padding: "10px 16px", whiteSpace: "nowrap" }}>
                           <input
                             type="text"
@@ -642,11 +715,10 @@ export default function RosterView({
                             value={r.notes}
                             onChange={(e) => updateEntry(origIdx, "notes", e.target.value)}
                             placeholder="Notes"
-                            style={tinyInputStyle(t)}
+                            style={tinyInputStyle(t, false, 120)}
                           />
                         </td>
 
-                        {/* Hours Sum */}
                         <td style={{ padding: "10px 16px", whiteSpace: "nowrap" }}>
                           {!isOff && hrs > 0 ? (
                             <div
@@ -687,7 +759,6 @@ export default function RosterView({
               </table>
             </div>
 
-            {/* Footer Summary */}
             <div
               style={{
                 padding: "12px 20px",
@@ -708,12 +779,10 @@ export default function RosterView({
             </div>
           </div>
 
-          {/* Sticky Live Hours + Pay Footer */}
           <div
-            className="no-print"
+            className="no-print roster-sticky-bar"
             style={{
               position: "sticky",
-              bottom: 16,
               zIndex: 40,
               background: t.card,
               border: `1px solid ${t.cardBdr}`,
@@ -743,7 +812,7 @@ export default function RosterView({
               <div>
                 <span style={{ fontSize: 10, color: t.sub, textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.5 }}>Breakdown</span>
                 <div style={{ fontSize: 12, fontWeight: 600, color: t.text }}>
-                  {workCount} Work · {roster.filter(r => r.shift === "N").length} Night · {roster.filter(r => r.shift === "F" || !r.shift).length} Off
+                  {workCount} Work · {nightCount} Night · {offCount} Off
                 </div>
               </div>
             </div>
@@ -785,7 +854,7 @@ const inputStyle = (t) => ({
   outline: "none",
 });
 
-const tinyInputStyle = (t, disabled = false) => ({
+const tinyInputStyle = (t, disabled = false, minWidth = 90) => ({
   padding: "5px 8px",
   borderRadius: 8,
   border: `1px solid ${t.inputBdr}`,
@@ -796,4 +865,5 @@ const tinyInputStyle = (t, disabled = false) => ({
   outline: "none",
   opacity: disabled ? 0.4 : 1,
   width: "100%",
+  minWidth,
 });

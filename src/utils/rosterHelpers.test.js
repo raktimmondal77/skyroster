@@ -153,7 +153,7 @@ describe("buildICS", () => {
     const ics = buildICS(roster, shifts);
     expect(ics).toContain("BEGIN:VCALENDAR");
     expect(ics).toContain("VERSION:2.0");
-    expect(ics).toContain("PRODID:-//SkyRoster//Smart Shift Planner v4.0//EN");
+    expect(ics).toContain("PRODID:-//SkyRoster//Smart Shift Planner v4.1//EN");
     expect(ics).toContain("BEGIN:VEVENT");
     expect(ics).toContain("DTSTART:20250115T090000");
     expect(ics).toContain("DTEND:20250115T170000");
